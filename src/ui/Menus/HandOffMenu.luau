@@ -21,6 +21,8 @@ export type MountContext = {
 	getNearbyPlayers: () -> { NearbyPlayer },
 	getSnackItems: () -> { HandOffItem },
 	requestHandOff: (targetUserId: number, itemId: string) -> boolean,
+	getPendingOutgoingOffer: () -> { [string]: any }?,
+	cancelPendingHandOff: () -> boolean,
 }
 
 local HandOffMenu = {}
@@ -131,12 +133,37 @@ function HandOffMenu.open(context: MountContext)
 		Enum.TextXAlignment.Center
 	UiStyle.line(screen, UDim2.new(1, -20, 0, 1), UDim2.fromOffset(10, 38), Color3.fromRGB(170, 170, 166), 0.35)
 
-	makePhoneLabel(screen, "Messages", UDim2.new(1, -24, 0, 28), UDim2.fromOffset(14, 52), 17, Enum.Font.GothamMedium)
+	local pendingOffer = context.getPendingOutgoingOffer()
+	if pendingOffer then
+		local pendingText = `Waiting: {pendingOffer.targetDisplayName} / {pendingOffer.itemDisplayName}`
+		makePhoneLabel(screen, pendingText, UDim2.new(1, -28, 0, 34), UDim2.fromOffset(14, 44), 11, Enum.Font.Gotham)
+		makePhoneButton(screen, "Cancel offer", UDim2.fromOffset(118, 28), UDim2.fromOffset(14, 78)).MouseButton1Click:Connect(
+			function()
+				if context.cancelPendingHandOff() then
+					HandOffMenu.showToast("Snack offer cancelled.")
+					clearMenu()
+				else
+					HandOffMenu.showToast("Could not cancel offer.")
+				end
+			end
+		)
+	end
+
+	local contentTop = if pendingOffer then 118 else 52
+
+	makePhoneLabel(
+		screen,
+		"Messages",
+		UDim2.new(1, -24, 0, 28),
+		UDim2.fromOffset(14, contentTop),
+		17,
+		Enum.Font.GothamMedium
+	)
 	makePhoneLabel(
 		screen,
 		"Send a small snack note to someone nearby.",
 		UDim2.new(1, -28, 0, 42),
-		UDim2.fromOffset(14, 78),
+		UDim2.fromOffset(14, contentTop + 26),
 		12,
 		Enum.Font.Gotham
 	)
@@ -145,13 +172,20 @@ function HandOffMenu.open(context: MountContext)
 		screen,
 		"Nearby students",
 		UDim2.new(1, -28, 0, 22),
-		UDim2.fromOffset(14, 126),
+		UDim2.fromOffset(14, contentTop + 74),
 		12,
 		Enum.Font.GothamMedium
 	)
 	local nearby = context.getNearbyPlayers()
 	if #nearby == 0 then
-		makePhoneLabel(screen, "No one close enough.", UDim2.new(1, -28, 0, 28), UDim2.fromOffset(14, 150), 12, nil)
+		makePhoneLabel(
+			screen,
+			"No one close enough.",
+			UDim2.new(1, -28, 0, 28),
+			UDim2.fromOffset(14, contentTop + 98),
+			12,
+			nil
+		)
 	else
 		for index, target in nearby do
 			if index > 3 then
@@ -161,7 +195,7 @@ function HandOffMenu.open(context: MountContext)
 				screen,
 				`{target.displayName}  ({math.floor(target.distance)} st)`,
 				UDim2.new(1, -28, 0, 30),
-				UDim2.fromOffset(14, 148 + (index - 1) * 34),
+				UDim2.fromOffset(14, contentTop + 96 + (index - 1) * 34),
 				false
 			)
 			button.MouseButton1Click:Connect(function()
@@ -171,11 +205,18 @@ function HandOffMenu.open(context: MountContext)
 		end
 	end
 
-	makePhoneLabel(screen, "Snack", UDim2.new(1, -28, 0, 22), UDim2.fromOffset(14, 270), 12, Enum.Font.GothamMedium)
+	makePhoneLabel(
+		screen,
+		"Snack",
+		UDim2.new(1, -28, 0, 22),
+		UDim2.fromOffset(14, contentTop + 218),
+		12,
+		Enum.Font.GothamMedium
+	)
 	for index, item in context.getSnackItems() do
 		local button = Instance.new("TextButton")
 		button.Size = UDim2.new(1, -28, 0, 30)
-		button.Position = UDim2.fromOffset(14, 294 + (index - 1) * 34)
+		button.Position = UDim2.fromOffset(14, contentTop + 242 + (index - 1) * 34)
 		button.BackgroundColor3 = item.color
 		button.BackgroundTransparency = 0.12
 		button.TextColor3 = Color3.fromRGB(28, 26, 22)
@@ -193,7 +234,7 @@ function HandOffMenu.open(context: MountContext)
 		end)
 	end
 
-	makePhoneButton(screen, "Send", UDim2.fromOffset(100, 30), UDim2.fromOffset(14, 426)).MouseButton1Click:Connect(
+	makePhoneButton(screen, "Send", UDim2.fromOffset(100, 30), UDim2.fromOffset(14, contentTop + 374)).MouseButton1Click:Connect(
 		function()
 			if not selectedTargetUserId or not selectedItemId then
 				HandOffMenu.showToast("Pick a student and snack first.")
@@ -208,7 +249,7 @@ function HandOffMenu.open(context: MountContext)
 		end
 	)
 
-	makePhoneButton(screen, "Close", UDim2.fromOffset(92, 30), UDim2.fromOffset(156, 426)).MouseButton1Click:Connect(
+	makePhoneButton(screen, "Close", UDim2.fromOffset(92, 30), UDim2.fromOffset(156, contentTop + 374)).MouseButton1Click:Connect(
 		function()
 			clearMenu()
 		end

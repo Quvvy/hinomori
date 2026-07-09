@@ -2,12 +2,15 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local TextService = game:GetService("TextService")
 
 local DataServiceServer = require(ServerScriptService.Services.DataService.DataServiceServer)
 local GameConfig = require(ReplicatedStorage.Shared.Modules.Game.GameConfig)
 local LockerServiceServer = require(ServerScriptService.Services.LockerService.LockerServiceServer)
+local LockerValidate = require(ReplicatedStorage.Shared.Modules.Core.LockerValidate)
 local Logger = require(ReplicatedStorage.Shared.Modules.Core.Logger)
 local Networker = require(ReplicatedStorage.Packages.Networker)
+local NoteServiceShared = require(ReplicatedStorage.Shared.Services.NoteService.NoteServiceShared)
 local NoteTemplates = require(ReplicatedStorage.Shared.Modules.Game.NoteTemplates)
 local SessionServiceServer = require(ServerScriptService.Services.SessionService.SessionServiceServer)
 local Validate = require(ReplicatedStorage.Shared.Modules.Core.Validate)
@@ -80,13 +83,48 @@ end
 
 local function removeNotesFromSender(profile: any, senderUserId: number)
 	local notes = profile.strangerNotes()
-	local updated = {}
+	local updatedStranger = {}
 	for _, note in notes do
 		if note.senderUserId ~= senderUserId then
-			table.insert(updated, note)
+			table.insert(updatedStranger, note)
 		end
 	end
-	profile.strangerNotes(updated)
+	profile.strangerNotes(updatedStranger)
+
+	local friendNotes = profile.friendNotes()
+	local updatedFriend = {}
+	for _, note in friendNotes do
+		if note.senderUserId ~= senderUserId then
+			table.insert(updatedFriend, note)
+		end
+	end
+	profile.friendNotes(updatedFriend)
+end
+
+local function trimText(rawText: string): string
+	return (string.match(rawText, "^%s*(.-)%s*$") or "")
+end
+
+local function filterFriendText(player: Player, rawText: string): (string?, string?)
+	local trimmed = trimText(rawText)
+	if trimmed == "" then
+		return nil, NoteServiceShared.SEND_REASON_TEXT_EMPTY
+	end
+
+	if #trimmed > GameConfig.NOTE_FRIEND_MAX_RAW_LENGTH then
+		return nil, NoteServiceShared.SEND_REASON_TEXT_TOO_LONG
+	end
+
+	local ok, filtered = pcall(function()
+		local result = TextService:FilterStringAsync(trimmed, player.UserId)
+		return result:GetNonChatStringForBroadcastAsync()
+	end)
+
+	if not ok or typeof(filtered) ~= "string" or filtered == "" then
+		return nil, NoteServiceShared.SEND_REASON_FILTER_FAILED
+	end
+
+	return filtered, nil
 end
 
 function NoteServiceServer.Init(self: NoteServiceServer)
@@ -95,6 +133,7 @@ function NoteServiceServer.Init(self: NoteServiceServer)
 		self.getStrangerTemplates,
 		self.getLockerNotes,
 		self.sendStrangerNote,
+		self.sendFriendNote,
 		self.setStrangerNotesEnabled,
 		self.clearLockerNotes,
 		self.blockNoteSender,
@@ -140,52 +179,56 @@ function NoteServiceServer.sendStrangerNote(
 	player: Player,
 	targetLockerId: string,
 	templateId: string
-): boolean
+): NoteServiceShared.SendStrangerNoteResult
 	if not Validate.isPlayerAlive(player) then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_UNKNOWN)
 	end
 
 	if not NoteTemplates.isValid(templateId) then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_INVALID_TEMPLATE)
+	end
+
+	if not LockerValidate.isNearLocker(player, targetLockerId) then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_TOO_FAR)
 	end
 
 	local lockerService = LockerServiceServer.GetInstance()
 	if not lockerService then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_UNKNOWN)
 	end
 
 	local ownerUserId = lockerService:GetOwnerUserIdForLocker(targetLockerId)
 	if not ownerUserId then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_OWNER_OFFLINE)
 	end
 
 	if ownerUserId == player.UserId then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_SELF)
 	end
 
 	local ownerProfile, ownerPlayer = getOwnerProfileForLocker(targetLockerId)
 	if not ownerProfile or not ownerPlayer then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_OWNER_OFFLINE)
 	end
 
 	if not ownerProfile.lockerNotesSettings.strangerNotesEnabled() then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_NOTES_DISABLED)
 	end
 
 	if isSenderBlocked(ownerProfile, player.UserId) then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_BLOCKED)
 	end
 
 	local dayKey = getInGameDayKey()
 	local notes = ownerProfile.strangerNotes()
 
 	if countSenderNotesToday(notes, player.UserId, dayKey) >= GameConfig.NOTE_MAX_STRANGER_PER_SENDER_PER_DAY then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_DAILY_LIMIT)
 	end
 
 	local maxVisible = ownerProfile.lockerNotesSettings.maxVisibleStrangerNotes()
 	if #notes >= maxVisible then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_LOCKER_FULL)
 	end
 
 	ownerProfile.strangerNotes.Insert({
@@ -199,7 +242,79 @@ function NoteServiceServer.sendStrangerNote(
 		sessionService:MarkFirstDayStep(player, "sentNote")
 	end
 
-	return true
+	return NoteServiceShared.success()
+end
+
+-- Active online owners only. Offline locker delivery is future work.
+function NoteServiceServer.sendFriendNote(
+	_self: NoteServiceServer,
+	player: Player,
+	targetLockerId: string,
+	rawText: string
+): NoteServiceShared.SendFriendNoteResult
+	if not Validate.isPlayerAlive(player) then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_UNKNOWN)
+	end
+
+	if not LockerValidate.isNearLocker(player, targetLockerId) then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_TOO_FAR)
+	end
+
+	local lockerService = LockerServiceServer.GetInstance()
+	if not lockerService then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_UNKNOWN)
+	end
+
+	local ownerUserId = lockerService:GetOwnerUserIdForLocker(targetLockerId)
+	if not ownerUserId then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_OWNER_OFFLINE)
+	end
+
+	if ownerUserId == player.UserId then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_SELF)
+	end
+
+	if not Validate.areFriends(player, ownerUserId) then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_NOT_FRIENDS)
+	end
+
+	local ownerProfile, ownerPlayer = getOwnerProfileForLocker(targetLockerId)
+	if not ownerProfile or not ownerPlayer then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_OWNER_OFFLINE)
+	end
+
+	if isSenderBlocked(ownerProfile, player.UserId) then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_BLOCKED)
+	end
+
+	local filteredText, filterReason = filterFriendText(player, rawText)
+	if not filteredText then
+		return NoteServiceShared.failure(filterReason or NoteServiceShared.SEND_REASON_FILTER_FAILED)
+	end
+
+	local dayKey = getInGameDayKey()
+	local friendNotes = ownerProfile.friendNotes()
+
+	if countSenderNotesToday(friendNotes, player.UserId, dayKey) >= GameConfig.NOTE_MAX_FRIEND_PER_SENDER_PER_DAY then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_DAILY_LIMIT)
+	end
+
+	if #friendNotes >= GameConfig.NOTE_MAX_VISIBLE_FRIEND then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_LOCKER_FULL)
+	end
+
+	ownerProfile.friendNotes.Insert({
+		text = filteredText,
+		senderUserId = player.UserId,
+		sentDayKey = dayKey,
+	})
+
+	local sessionService = SessionServiceServer.GetInstance()
+	if sessionService then
+		sessionService:MarkFirstDayStep(player, "sentNote")
+	end
+
+	return NoteServiceShared.success()
 end
 
 function NoteServiceServer.setStrangerNotesEnabled(_self: NoteServiceServer, player: Player, enabled: boolean): boolean
@@ -227,6 +342,7 @@ function NoteServiceServer.clearLockerNotes(_self: NoteServiceServer, player: Pl
 	end
 
 	profile.strangerNotes({})
+	profile.friendNotes({})
 	return true
 end
 

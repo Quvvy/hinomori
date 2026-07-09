@@ -17,6 +17,7 @@ export type HandOffServiceClient = typeof(setmetatable(
 	{} :: {
 		_networker: Networker.Client?,
 		_menuModule: any?,
+		_pendingOutgoingOffer: { [string]: any }?,
 	},
 	HandOffServiceClient
 ))
@@ -39,6 +40,21 @@ function HandOffServiceClient.Start(self: HandOffServiceClient)
 		end,
 		requestHandOff = function(targetUserId: number, itemId: string)
 			return self:RequestHandOff(targetUserId, itemId)
+		end,
+		getPendingOutgoingOffer = function()
+			return self._pendingOutgoingOffer
+		end,
+		cancelPendingHandOff = function()
+			local offer = self._pendingOutgoingOffer
+			if not offer or typeof(offer.offerId) ~= "string" then
+				return false
+			end
+
+			local ok = self:CancelHandOff(offer.offerId)
+			if ok then
+				self._pendingOutgoingOffer = nil
+			end
+			return ok
 		end,
 	})
 end
@@ -111,12 +127,14 @@ function HandOffServiceClient.receiveHandOffOffer(self: HandOffServiceClient, of
 end
 
 function HandOffServiceClient.handOffOfferSent(self: HandOffServiceClient, offer: { [string]: any })
+	self._pendingOutgoingOffer = offer
 	if self._menuModule then
 		self._menuModule.showToast(`Offered {offer.itemDisplayName} to {offer.targetDisplayName}.`)
 	end
 end
 
 function HandOffServiceClient.handOffResult(self: HandOffServiceClient, result: { [string]: any })
+	self._pendingOutgoingOffer = nil
 	if not self._menuModule then
 		return
 	end

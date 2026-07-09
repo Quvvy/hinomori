@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 
 local RhythmMapParser = require(ReplicatedStorage.Shared.Modules.Game.RhythmMapParser)
 local RhythmScoring = require(ReplicatedStorage.Shared.Modules.Game.RhythmScoring)
+local RhythmSettings = require(script.Parent.Parent.RhythmSettings)
 local UiStyle = require(script.Parent.Parent.UiStyle)
 
 type RhythmSong = {
@@ -30,6 +31,9 @@ type FinishResult = {
 type RuntimeNote = RhythmMapParser.RhythmNote & {
 	hit: boolean,
 	missed: boolean,
+	started: boolean,
+	holding: boolean,
+	startDeltaMs: number?,
 	gui: Frame?,
 }
 
@@ -43,6 +47,7 @@ type ActiveSession = {
 	keyLabels: { TextLabel },
 	statsLabel: TextLabel,
 	judgmentLabel: TextLabel,
+	speedLabel: TextLabel,
 	score: number,
 	combo: number,
 	maxCombo: number,
@@ -84,6 +89,22 @@ local function makeTextLabel(parent: Instance, text: string, size: UDim2, positi
 	return label
 end
 
+local function makeSmallButton(parent: Instance, text: string, size: UDim2, position: UDim2): TextButton
+	local button = Instance.new("TextButton")
+	button.Size = size
+	button.Position = position
+	button.BackgroundColor3 = UiStyle.Colors.InkSoft
+	button.BackgroundTransparency = 0.08
+	button.BorderSizePixel = 0
+	button.Text = text
+	button.TextColor3 = UiStyle.Colors.Paper
+	button.TextSize = 13
+	button.Font = Enum.Font.GothamBold
+	button.AutoButtonColor = true
+	button.Parent = parent
+	return button
+end
+
 local function addCorner(instance: GuiObject, radius: number)
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, radius)
@@ -112,11 +133,24 @@ local function cloneWorkspaceSound(song: RhythmSong): Sound
 	return sound
 end
 
-local function makeNoteGui(laneFrame: Frame, lane: number): Frame
+local function currentApproachSeconds(): number
+	return RhythmScoring.approachSecondsForScrollSpeed(RhythmSettings.getScrollSpeed())
+end
+
+local function holdPixelHeight(holdMs: number, approachSeconds: number): number
+	if holdMs <= 0 then
+		return NOTE_HEIGHT
+	end
+
+	local holdPixels = TRAVEL_DISTANCE * (holdMs / (approachSeconds * 1000))
+	return math.max(NOTE_HEIGHT, NOTE_HEIGHT + math.floor(holdPixels))
+end
+
+local function makeNoteGui(laneFrame: Frame, lane: number, holdMs: number): Frame
 	local note = Instance.new("Frame")
 	note.Name = `Note_{lane}`
-	note.AnchorPoint = Vector2.new(0.5, 0.5)
-	note.Size = UDim2.new(NOTE_WIDTH_SCALE, 0, 0, NOTE_HEIGHT)
+	note.AnchorPoint = if holdMs > 0 then Vector2.new(0.5, 1) else Vector2.new(0.5, 0.5)
+	note.Size = UDim2.new(NOTE_WIDTH_SCALE, 0, 0, holdPixelHeight(holdMs, currentApproachSeconds()))
 	note.Position = UDim2.new(0.5, 0, 0, SPAWN_Y)
 	note.BorderSizePixel = 0
 	note.BackgroundColor3 = ({
@@ -130,10 +164,15 @@ local function makeNoteGui(laneFrame: Frame, lane: number): Frame
 	return note
 end
 
+local function updateSpeedLabel(label: TextLabel)
+	label.Text = `Speed {RhythmSettings.formatScrollSpeed()}`
+end
+
 local function updateStats(session: ActiveSession)
 	local accuracy = RhythmScoring.accuracyFromJudgments(session.judgments, #session.notes)
 	session.statsLabel.Text =
 		`Score {session.score}    Combo {session.combo}    Accuracy {math.floor(accuracy * 1000) / 10}%`
+	updateSpeedLabel(session.speedLabel)
 end
 
 local function flashLane(session: ActiveSession, lane: number, pressed: boolean)
@@ -185,59 +224,28 @@ local function finishSession(session: ActiveSession)
 	end)
 end
 
+local function destroyNoteGui(note: RuntimeNote)
+	if note.gui then
+		note.gui:Destroy()
+		note.gui = nil
+	end
+end
+
 local function markMiss(session: ActiveSession, note: RuntimeNote)
 	if note.hit or note.missed then
 		return
 	end
 
 	note.missed = true
+	note.holding = false
 	session.combo = 0
 	session.judgments.miss += 1
-	if note.gui then
-		note.gui:Destroy()
-		note.gui = nil
-	end
+	destroyNoteGui(note)
 	setJudgmentText(session, "Miss", UiStyle.Colors.Danger)
 	updateStats(session)
 end
 
-local function hitLane(session: ActiveSession, lane: number)
-	if session.finished then
-		return
-	end
-
-	local nowMs = chartTimeMs(session)
-	local nearestNote: RuntimeNote? = nil
-	local nearestDelta = RhythmScoring.MISS_WINDOW_MS + 1
-
-	for _, note in session.notes do
-		if note.lane == lane and not note.hit and not note.missed then
-			local delta = nowMs - note.timeMs
-			local absoluteDelta = math.abs(delta)
-			if absoluteDelta < nearestDelta then
-				nearestNote = note
-				nearestDelta = absoluteDelta
-			end
-		end
-	end
-
-	if not nearestNote then
-		setJudgmentText(session, "Early", UiStyle.Colors.AccentWarm)
-		return
-	end
-
-	local judgmentName, scoreValue = RhythmScoring.judgeDelta(nowMs - nearestNote.timeMs)
-	if not judgmentName then
-		setJudgmentText(session, "Early", UiStyle.Colors.AccentWarm)
-		return
-	end
-
-	nearestNote.hit = true
-	if nearestNote.gui then
-		nearestNote.gui:Destroy()
-		nearestNote.gui = nil
-	end
-
+local function addJudgment(session: ActiveSession, judgmentName: string, scoreValue: number)
 	session.score += scoreValue
 	session.combo += 1
 	session.maxCombo = math.max(session.maxCombo, session.combo)
@@ -256,6 +264,98 @@ local function hitLane(session: ActiveSession, lane: number)
 	updateStats(session)
 end
 
+local function completeNote(session: ActiveSession, note: RuntimeNote, judgmentName: string, scoreValue: number)
+	if note.hit or note.missed then
+		return
+	end
+
+	note.hit = true
+	note.holding = false
+	destroyNoteGui(note)
+	addJudgment(session, judgmentName, scoreValue)
+end
+
+local function completeHold(session: ActiveSession, note: RuntimeNote)
+	local judgmentName, scoreValue = RhythmScoring.judgeDelta(note.startDeltaMs or 0)
+	if not judgmentName then
+		markMiss(session, note)
+		return
+	end
+
+	completeNote(session, note, judgmentName, scoreValue)
+end
+
+local function findNearestPressableNote(session: ActiveSession, lane: number, nowMs: number): RuntimeNote?
+	local nearestNote: RuntimeNote? = nil
+	local nearestDelta = RhythmScoring.MISS_WINDOW_MS + 1
+
+	for _, note in session.notes do
+		if note.lane == lane and not note.hit and not note.missed and not note.started then
+			local delta = nowMs - note.timeMs
+			local absoluteDelta = math.abs(delta)
+			if absoluteDelta < nearestDelta then
+				nearestNote = note
+				nearestDelta = absoluteDelta
+			end
+		end
+	end
+
+	return nearestNote
+end
+
+local function hitLane(session: ActiveSession, lane: number)
+	if session.finished then
+		return
+	end
+
+	local nowMs = chartTimeMs(session)
+	local nearestNote = findNearestPressableNote(session, lane, nowMs)
+	if not nearestNote then
+		setJudgmentText(session, "Early", UiStyle.Colors.AccentWarm)
+		return
+	end
+
+	local deltaMs = nowMs - nearestNote.timeMs
+	local judgmentName, scoreValue = RhythmScoring.judgeDelta(deltaMs)
+	if not judgmentName then
+		setJudgmentText(session, "Early", UiStyle.Colors.AccentWarm)
+		return
+	end
+
+	if nearestNote.holdMs > 0 then
+		nearestNote.started = true
+		nearestNote.holding = true
+		nearestNote.startDeltaMs = deltaMs
+		if nearestNote.gui then
+			nearestNote.gui.BackgroundTransparency = 0.15
+		end
+		setJudgmentText(session, "Hold", UiStyle.Colors.PaperWarm)
+		return
+	end
+
+	completeNote(session, nearestNote, judgmentName, scoreValue)
+end
+
+local function releaseLane(session: ActiveSession, lane: number)
+	if session.finished then
+		return
+	end
+
+	local nowMs = chartTimeMs(session)
+	for _, note in session.notes do
+		if note.lane == lane and note.holding and not note.hit and not note.missed then
+			local endMs = note.timeMs + note.holdMs
+			if nowMs < endMs - RhythmScoring.HOLD_RELEASE_WINDOW_MS then
+				setJudgmentText(session, "Dropped", UiStyle.Colors.Danger)
+				markMiss(session, note)
+			else
+				completeHold(session, note)
+			end
+			return
+		end
+	end
+end
+
 local function bindInputs(session: ActiveSession)
 	for lane, keyCode in RhythmScoring.KEY_CODES do
 		ContextActionService:BindActionAtPriority(
@@ -266,6 +366,7 @@ local function bindInputs(session: ActiveSession)
 					hitLane(session, lane)
 				elseif inputState == Enum.UserInputState.End then
 					flashLane(session, lane, false)
+					releaseLane(session, lane)
 				end
 				return Enum.ContextActionResult.Sink
 			end,
@@ -282,23 +383,47 @@ local function unbindInputs()
 	end
 end
 
+local function updateHoldGui(note: RuntimeNote, y: number, remainingHoldMs: number?)
+	if not note.gui then
+		return
+	end
+
+	local approachSeconds = currentApproachSeconds()
+	if note.holdMs > 0 then
+		note.gui.Size =
+			UDim2.new(NOTE_WIDTH_SCALE, 0, 0, holdPixelHeight(remainingHoldMs or note.holdMs, approachSeconds))
+		note.gui.Position = UDim2.new(0.5, 0, 0, y)
+	else
+		note.gui.Position = UDim2.new(0.5, 0, 0, y)
+	end
+end
+
 local function renderSession(session: ActiveSession)
 	local nowMs = chartTimeMs(session)
+	local approachSeconds = currentApproachSeconds()
+
 	for _, note in session.notes do
 		if not note.hit and not note.missed then
-			if nowMs > note.timeMs + RhythmScoring.MISS_WINDOW_MS then
+			if note.holding then
+				local endMs = note.timeMs + note.holdMs
+				if nowMs >= endMs then
+					completeHold(session, note)
+				else
+					updateHoldGui(note, HIT_Y, endMs - nowMs)
+				end
+			elseif nowMs > note.timeMs + RhythmScoring.MISS_WINDOW_MS then
 				markMiss(session, note)
 			else
 				local timeUntilSeconds = (note.timeMs - nowMs) / 1000
-				if timeUntilSeconds <= RhythmScoring.APPROACH_SECONDS then
+				if timeUntilSeconds <= approachSeconds then
 					local laneFrame = session.laneFrames[note.lane]
 					if not note.gui then
-						note.gui = makeNoteGui(laneFrame, note.lane)
+						note.gui = makeNoteGui(laneFrame, note.lane, note.holdMs)
 					end
 
-					local progress = 1 - math.clamp(timeUntilSeconds / RhythmScoring.APPROACH_SECONDS, 0, 1)
+					local progress = 1 - math.clamp(timeUntilSeconds / approachSeconds, 0, 1)
 					local y = SPAWN_Y + (TRAVEL_DISTANCE * progress)
-					note.gui.Position = UDim2.new(0.5, 0, 0, y)
+					updateHoldGui(note, y)
 				end
 			end
 		end
@@ -312,7 +437,7 @@ end
 local function makeSessionGui(
 	song: RhythmSong,
 	parsedMap: RhythmMapParser.ParsedMap
-): (ScreenGui, { Frame }, { TextLabel }, TextLabel, TextLabel)
+): (ScreenGui, { Frame }, { TextLabel }, TextLabel, TextLabel, TextLabel)
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "RhythmGameUI"
 	gui.ResetOnSpawn = false
@@ -351,10 +476,33 @@ local function makeSessionGui(
 	local statsLabel = makeTextLabel(
 		frame,
 		"Score 0    Combo 0    Accuracy 0%",
-		UDim2.new(1, -24, 0, 24),
+		UDim2.new(1, -180, 0, 24),
 		UDim2.fromOffset(12, 62),
 		12
 	)
+	local speedLabel = makeTextLabel(
+		frame,
+		`Speed {RhythmSettings.formatScrollSpeed()}`,
+		UDim2.fromOffset(78, 24),
+		UDim2.fromOffset(288, 62),
+		12
+	)
+	updateSpeedLabel(speedLabel)
+
+	local slowerButton = makeSmallButton(frame, "-", UDim2.fromOffset(28, 24), UDim2.fromOffset(368, 62))
+	addCorner(slowerButton, 5)
+	slowerButton.MouseButton1Click:Connect(function()
+		RhythmSettings.adjustScrollSpeed(-RhythmSettings.SCROLL_SPEED_STEP)
+		updateSpeedLabel(speedLabel)
+	end)
+
+	local fasterButton = makeSmallButton(frame, "+", UDim2.fromOffset(28, 24), UDim2.fromOffset(402, 62))
+	addCorner(fasterButton, 5)
+	fasterButton.MouseButton1Click:Connect(function()
+		RhythmSettings.adjustScrollSpeed(RhythmSettings.SCROLL_SPEED_STEP)
+		updateSpeedLabel(speedLabel)
+	end)
+
 	local judgmentLabel = makeTextLabel(frame, "Ready", UDim2.new(1, -24, 0, 34), UDim2.fromOffset(12, 86), 22)
 	judgmentLabel.Font = Enum.Font.GothamBold
 	judgmentLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -406,14 +554,14 @@ local function makeSessionGui(
 		keyLabels[lane] = keyLabel
 	end
 
-	return gui, laneFrames, keyLabels, statsLabel, judgmentLabel
+	return gui, laneFrames, keyLabels, statsLabel, judgmentLabel, speedLabel
 end
 
 function RhythmGame.start(match: { [string]: any }, song: RhythmSong, onFinish: (FinishResult) -> ())
 	RhythmGame.stop()
 
 	local parsedMap = RhythmMapParser.parse(song.mapText)
-	local gui, laneFrames, keyLabels, statsLabel, judgmentLabel = makeSessionGui(song, parsedMap)
+	local gui, laneFrames, keyLabels, statsLabel, judgmentLabel, speedLabel = makeSessionGui(song, parsedMap)
 	local sound = cloneWorkspaceSound(song)
 	sound.Name = "RhythmPlayback"
 	sound.Parent = gui
@@ -426,6 +574,9 @@ function RhythmGame.start(match: { [string]: any }, song: RhythmSong, onFinish: 
 			holdMs = note.holdMs,
 			hit = false,
 			missed = false,
+			started = false,
+			holding = false,
+			startDeltaMs = nil,
 			gui = nil,
 		})
 	end
@@ -440,6 +591,7 @@ function RhythmGame.start(match: { [string]: any }, song: RhythmSong, onFinish: 
 		keyLabels = keyLabels,
 		statsLabel = statsLabel,
 		judgmentLabel = judgmentLabel,
+		speedLabel = speedLabel,
 		score = 0,
 		combo = 0,
 		maxCombo = 0,

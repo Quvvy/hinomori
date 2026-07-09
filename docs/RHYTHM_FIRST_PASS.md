@@ -8,6 +8,8 @@ Prototype. This replaces the arcade's pure score stub with a first playable four
 
 - Song select in the arcade cabinet menu.
 - Four-lane client rhythm runner using `D`, `F`, `J`, `K`.
+- Hold notes: press on the head, hold through the tail, one judgment on release or auto-complete at hold end.
+- Adjustable scroll speed (`0.8x`–`3.0x`, default `2.5x`) via `+`/`-` controls in the rhythm UI; client-only, not persisted.
 - Text chunk chart parser for simple map authoring.
 - Placeholder songs using the Studio `Workspace.Life in an Elevator` Sound when present, with `rbxassetid://1841647093` as fallback.
 - Solo and 1v1 match start paths carry a selected song id.
@@ -40,16 +42,27 @@ audio=workspace:Life in an Elevator
 Notes start under `[notes]`. Each note is:
 
 ```text
-timeMs,lane
-```
-
-Optional hold length is accepted but not visually implemented yet:
-
-```text
 timeMs,lane,holdMs
 ```
 
+`holdMs` is optional; omit it or use `0` for tap notes. Holds render taller than taps and require holding the lane key until the tail passes the hit line.
+
 Lanes are numbered `1` through `4`, mapped to `D`, `F`, `J`, `K`.
+
+## Timing Windows
+
+Judgment windows (milliseconds from note head):
+
+| Judgment | Window |
+|----------|--------|
+| Perfect | ±60 |
+| Great | ±115 |
+| Good | ±180 |
+| Miss | ±230 |
+
+Hold release grace: `140ms` before the hold end counts as an early drop (miss).
+
+Scroll approach time uses `BASE_APPROACH_SECONDS` (`1.65`) divided by the current scroll speed multiplier.
 
 ## Verified
 
@@ -82,11 +95,19 @@ Lanes are numbered `1` through `4`, mapped to `D`, `F`, `J`, `K`.
 - Added `CamelliaFlamewallTest.luau` using `Workspace.camellia - flamewall` / `rbxassetid://81654436561725`.
 - The Flamewall map is a placeholder test chart for song switching and density checks, not a final authored chart.
 
+## Follow-up Holds + Scroll Speed - 2026-07-08
+
+- Wider timing windows: Perfect 60ms, Great 115ms, Good 180ms, Miss 230ms.
+- Hold note gameplay: head press judges timing; hold through tail; early release = miss; one judgment per chart row.
+- Client-only scroll speed in `src/ui/RhythmSettings.luau` (default `2.5x`, range `0.8x`–`3.0x`, step `0.1`).
+- Minimal `Speed` label and `+`/`-` controls in the rhythm top bar.
+- Test holds added to `LifeInAnElevatorEasy.luau` (5) and `LifeInAnElevatorMedium.luau` (7); `CamelliaFlamewallTest.luau` unchanged.
+
 ## Known Prototype Limits
 
 - Manual keypress feel still needs human testing; MCP cannot press gameplay keys with the same fidelity as a player.
 - 1v1 was wired and protected by timeout, but only the Solo path was smoke-tested in Studio MCP.
-- Hold notes are parsed but treated as tap notes for now.
+- Scroll speed resets when the client reloads; it is not saved to profile or DataService.
 - The chart is placeholder timing against placeholder audio, not a real authored chart.
 - Result validation caps/sanitizes submitted judgments and server-awards fixed tickets, but full anti-cheat timing replay is not built.
 - Studio placeholder polish exists in the open place; save the place after reviewing if you want to keep those model changes.
@@ -98,8 +119,9 @@ Lanes are numbered `1` through `4`, mapped to `D`, `F`, `J`, `K`.
 - Stand near the cabinet and press `E`.
 - Confirm the cabinet menu shows two `Life in an Elevator` difficulties.
 - Join queue, select Easy, and start Solo.
-- Confirm the rhythm UI opens and the audio starts.
-- Press `D`, `F`, `J`, `K` on incoming notes and judge whether the hit timing feels responsive.
+- Confirm the rhythm UI opens, scroll speed controls appear, and the audio starts.
+- Press `D`, `F`, `J`, `K` on incoming notes; hold notes should render longer and require holding the key.
+- Adjust scroll speed with `+`/`-` and confirm note approach speed changes.
 - Let the song finish and confirm a result toast appears.
 - Confirm tickets increase after a completed run.
 - Try Medium and confirm note density changes.

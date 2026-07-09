@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Logger = require(ReplicatedStorage.Shared.Modules.Core.Logger)
 local Networker = require(ReplicatedStorage.Packages.Networker)
+local NoteServiceShared = require(ReplicatedStorage.Shared.Services.NoteService.NoteServiceShared)
 
 local NoteServiceClient = {}
 NoteServiceClient.__index = NoteServiceClient
@@ -43,12 +44,38 @@ function NoteServiceClient.SendStrangerNote(
 	self: NoteServiceClient,
 	targetLockerId: string,
 	templateId: string
-): boolean
+): NoteServiceShared.SendStrangerNoteResult
 	if not self._networker then
-		return false
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_UNKNOWN)
 	end
 
-	return self._networker:fetch("sendStrangerNote", targetLockerId, templateId) == true
+	local result = self._networker:fetch("sendStrangerNote", targetLockerId, templateId)
+	if typeof(result) == "table" and typeof(result.ok) == "boolean" then
+		return result :: NoteServiceShared.SendStrangerNoteResult
+	end
+
+	return if result == true
+		then NoteServiceShared.success()
+		else NoteServiceShared.failure(NoteServiceShared.SEND_REASON_UNKNOWN)
+end
+
+function NoteServiceClient.SendFriendNote(
+	self: NoteServiceClient,
+	targetLockerId: string,
+	rawText: string
+): NoteServiceShared.SendFriendNoteResult
+	if not self._networker then
+		return NoteServiceShared.failure(NoteServiceShared.SEND_REASON_UNKNOWN)
+	end
+
+	local result = self._networker:fetch("sendFriendNote", targetLockerId, rawText)
+	if typeof(result) == "table" and typeof(result.ok) == "boolean" then
+		return result :: NoteServiceShared.SendFriendNoteResult
+	end
+
+	return if result == true
+		then NoteServiceShared.success()
+		else NoteServiceShared.failure(NoteServiceShared.SEND_REASON_UNKNOWN)
 end
 
 function NoteServiceClient.SetStrangerNotesEnabled(self: NoteServiceClient, enabled: boolean): boolean

@@ -55,7 +55,7 @@ Design direction:
 - [x] Owner controls: disable strangers, clear, block
 - [x] Unified offer/accept/decline pipeline for snack skin
 - [x] Distance + cooldown validation
-- [ ] Friend-tier free text after stranger loop works
+- [x] Friend-tier free text after stranger loop works (Roblox friends only, `TextService` filtered — see `docs/FRIEND_NOTES_PLAN.md`)
 - [ ] Offline locker note delivery
 
 Design direction:
@@ -90,16 +90,16 @@ Potential future arcade modes:
 - Co-op score
 - Relay / crowd challenge
 
-## Phase 3.5 - Rhythm Engine Quality Pass (Next)
+## Phase 3.5 - Rhythm Engine Quality Pass (Done)
 
 Purpose: improve the existing arcade rhythm engine before building more arcade or garage content.
 
-- [ ] Add hold-note gameplay using the existing `timeMs,lane,holdMs` parser format
-- [ ] Keep each chart row as one judgment for server result compatibility
-- [ ] Add session-local scroll speed setting, default about `1.4x`, adjustable around `0.8x` to `3.0x`
-- [ ] Widen timing windows so a competent 4-key player is not punished unfairly
-- [ ] Add a small number of test holds to the Easy and Medium placeholder maps
-- [ ] Do not add chord notes, band systems, auto-chart tooling, settings persistence, DataService changes, or new Networker methods in this pass
+- [x] Add hold-note gameplay using the existing `timeMs,lane,holdMs` parser format
+- [x] Keep each chart row as one judgment for server result compatibility
+- [x] Add session-local scroll speed setting, default `2.5x`, adjustable `0.8x` to `3.0x`
+- [x] Widen timing windows so a competent 4-key player is not punished unfairly
+- [x] Add a small number of test holds to the Easy and Medium placeholder maps
+- [x] Do not add chord notes, band systems, auto-chart tooling, settings persistence, DataService changes, or new Networker methods in this pass
 
 Target timing windows:
 
@@ -135,6 +135,8 @@ Studio checks:
 - Scroll speed changes note approach speed.
 - Solo and 1v1 result submission still clear the active match.
 
+See `docs/RHYTHM_FIRST_PASS.md` for map format and Studio checklist.
+
 ## Phase 4 - Session And Diegetic UI (Prototype)
 
 - [x] Bus prologue -> school -> after-school phase transitions
@@ -162,13 +164,25 @@ Design direction:
 - [x] Server-session progress hooks for locker, decor, note, snack, after-school, and arcade actions
 - [x] No new economy, quest rewards, monetization, schedule sim, or out-of-scope school systems
 
-## Phase 7 - V0 Hardening (Planned)
+## Phase 7 - V0 Hardening (In Progress)
 
-- [ ] Manual two-player pass for notes and snack hand-off
-- [ ] Manual arcade pass for Solo and 1v1 rhythm completion
-- [ ] Verify rhythm timing after the hold/scroll-speed pass
-- [ ] Polish school/arcade blockout only where it improves readability
-- [ ] Confirm desktop and mobile-ish viewport readability for main V0 UI
+Repo hardening shipped (see `docs/V0_HARDENING_PLAN.md`):
+
+- [x] Structured stranger-note send results with proximity check and user-facing toasts
+- [x] All stranger templates selectable from locker menu; display names on note slips
+- [x] Per-note block affordance for locker owners
+- [x] Cancel outgoing snack hand-off offer from phone UI
+- [x] Leave arcade spectator list from cabinet menu
+- [x] QA runbooks documented for notes/snack, Solo arcade, and 1v1 arcade
+- [x] Studio blockout readability checklist documented (user applies in Studio)
+
+Manual Studio verification still open:
+
+- [x] Manual two-player pass for notes and snack hand-off
+- [x] Manual arcade pass for Solo and 1v1 rhythm completion
+- [x] Verify rhythm timing after the hold/scroll-speed pass
+- [x] Polish school/arcade blockout only where it improves readability
+- [x] Confirm desktop and mobile-ish viewport readability for main V0 UI
 
 ## Phase 8 - Garage Social Jam (Future, Direction 1)
 

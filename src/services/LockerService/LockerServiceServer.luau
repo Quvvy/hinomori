@@ -43,14 +43,59 @@ local function getDecorArray(profile: any): { { slotId: string, itemId: string }
 	return result
 end
 
-local function getNotesArray(profile: any): { { templateId: string, senderUserId: number, sentDayKey: string } }
+local function getSenderDisplayName(senderUserId: number): string
+	local sender = Players:GetPlayerByUserId(senderUserId)
+	if sender then
+		return sender.DisplayName
+	end
+
+	local ok, name = pcall(function()
+		return Players:GetNameFromUserIdAsync(senderUserId)
+	end)
+	if ok and typeof(name) == "string" and name ~= "" then
+		return name
+	end
+
+	return "Student"
+end
+
+local function getNotesArray(profile: any): {
+	{
+		templateId: string,
+		senderUserId: number,
+		sentDayKey: string,
+		senderDisplayName: string,
+	}
+}
 	local notes = profile.strangerNotes()
-	local result: { { templateId: string, senderUserId: number, sentDayKey: string } } = {}
+	local result: { { templateId: string, senderUserId: number, sentDayKey: string, senderDisplayName: string } } = {}
 	for _, note in notes do
 		table.insert(result, {
 			templateId = note.templateId,
 			senderUserId = note.senderUserId,
 			sentDayKey = note.sentDayKey,
+			senderDisplayName = getSenderDisplayName(note.senderUserId),
+		})
+	end
+	return result
+end
+
+local function getFriendNotesArray(profile: any): {
+	{
+		text: string,
+		senderUserId: number,
+		sentDayKey: string,
+		senderDisplayName: string,
+	}
+}
+	local notes = profile.friendNotes()
+	local result: { { text: string, senderUserId: number, sentDayKey: string, senderDisplayName: string } } = {}
+	for _, note in notes do
+		table.insert(result, {
+			text = note.text,
+			senderUserId = note.senderUserId,
+			sentDayKey = note.sentDayKey,
+			senderDisplayName = getSenderDisplayName(note.senderUserId),
 		})
 	end
 	return result
@@ -376,13 +421,16 @@ function LockerServiceServer.requestLockerState(self: LockerServiceServer, playe
 	local isOwner = ownerUserId == player.UserId
 
 	local decor: { { slotId: string, itemId: string } } = {}
-	local notes: { { templateId: string, senderUserId: number, sentDayKey: string } } = {}
+	local notes: { { templateId: string, senderUserId: number, sentDayKey: string, senderDisplayName: string } } = {}
+	local friendNotes: { { text: string, senderUserId: number, sentDayKey: string, senderDisplayName: string } } = {}
 	local displayName = "Unknown"
 	local strangerNotesEnabled = true
+	local isFriendOfOwner = false
 
 	if isOwner then
 		decor = getDecorArray(profile)
 		notes = getNotesArray(profile)
+		friendNotes = getFriendNotesArray(profile)
 		displayName = profile.studentProfile.displayName()
 		strangerNotesEnabled = profile.lockerNotesSettings.strangerNotesEnabled()
 	else
@@ -392,11 +440,14 @@ function LockerServiceServer.requestLockerState(self: LockerServiceServer, playe
 			if ownerProfile then
 				decor = getDecorArray(ownerProfile)
 				notes = getNotesArray(ownerProfile)
+				friendNotes = getFriendNotesArray(ownerProfile)
 				displayName = ownerProfile.studentProfile.displayName()
 				strangerNotesEnabled = ownerProfile.lockerNotesSettings.strangerNotesEnabled()
 			else
 				displayName = ownerPlayer.DisplayName
 			end
+
+			isFriendOfOwner = Validate.areFriends(player, ownerUserId)
 		end
 	end
 
@@ -407,6 +458,8 @@ function LockerServiceServer.requestLockerState(self: LockerServiceServer, playe
 		ownerUserId = ownerUserId,
 		decor = decor,
 		notes = notes,
+		friendNotes = friendNotes,
+		isFriendOfOwner = isFriendOfOwner,
 		strangerNotesEnabled = strangerNotesEnabled,
 		displayName = displayName,
 	}

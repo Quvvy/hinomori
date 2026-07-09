@@ -122,6 +122,8 @@ function LockerServiceClient.OpenLocker(self: LockerServiceClient, lockerId: str
 			displayName = state.displayName,
 			decor = state.decor,
 			notes = state.notes,
+			friendNotes = state.friendNotes or {},
+			isFriendOfOwner = state.isFriendOfOwner == true,
 			strangerNotesEnabled = state.strangerNotesEnabled,
 			onClose = function() end,
 			onRefresh = function()
@@ -154,15 +156,26 @@ function LockerServiceClient.OpenLocker(self: LockerServiceClient, lockerId: str
 				return ok
 			end,
 			sendNote = function(templateId: string)
-				local ok = NoteServiceClient:SendStrangerNote(lockerId, templateId)
-				if ok then
+				local result = NoteServiceClient:SendStrangerNote(lockerId, templateId)
+				if result.ok then
 					refreshVisuals()
 					local refreshed = buildMenuContext()
 					if refreshed then
 						self._menuModule.open(refreshed)
 					end
 				end
-				return ok
+				return result
+			end,
+			sendFriendNote = function(rawText: string)
+				local result = NoteServiceClient:SendFriendNote(lockerId, rawText)
+				if result.ok then
+					refreshVisuals()
+					local refreshed = buildMenuContext()
+					if refreshed then
+						self._menuModule.open(refreshed)
+					end
+				end
+				return result
 			end,
 			setStrangerNotesEnabled = function(enabled: boolean)
 				local ok = NoteServiceClient:SetStrangerNotesEnabled(enabled)

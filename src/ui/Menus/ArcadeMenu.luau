@@ -209,13 +209,24 @@ function ArcadeMenu.open(state: { [string]: any })
 		end
 	)
 
-	makeGlassButton(frame, "Watch", UDim2.fromOffset(128, 30), UDim2.fromOffset(300, 398)).MouseButton1Click:Connect(
+	makeGlassButton(frame, "Watch", UDim2.fromOffset(96, 30), UDim2.fromOffset(224, 398)).MouseButton1Click:Connect(
 		function()
 			if context and context.joinSpectators() then
 				currentState = context.refresh()
 				rerender()
 			else
 				ArcadeMenu.showToast("Could not watch from here.")
+			end
+		end
+	)
+
+	makeGlassButton(frame, "Stop watching", UDim2.fromOffset(108, 30), UDim2.fromOffset(326, 398)).MouseButton1Click:Connect(
+		function()
+			if context and context.leaveSpectators() then
+				currentState = context.refresh()
+				rerender()
+			else
+				ArcadeMenu.showToast("You are not watching.")
 			end
 		end
 	)

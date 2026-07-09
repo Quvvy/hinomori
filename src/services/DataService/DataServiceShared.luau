@@ -23,12 +23,19 @@ export type StrangerNoteEntry = {
 	sentDayKey: string,
 }
 
+export type FriendNoteEntry = {
+	text: string,
+	senderUserId: number,
+	sentDayKey: string,
+}
+
 export type PlayerProfile = {
 	studentProfile: StudentProfile,
 	assignedLockerId: string,
 	lockerDecor: { LockerDecorEntry },
 	lockerNotesSettings: LockerNotesSettings,
 	strangerNotes: { StrangerNoteEntry },
+	friendNotes: { FriendNoteEntry },
 	blockedNoteSenderUserIds: { number },
 	arcadeTickets: number,
 }
@@ -47,6 +54,7 @@ local PROFILE_TEMPLATE: PlayerProfile = {
 		maxVisibleStrangerNotes = 5,
 	},
 	strangerNotes = {},
+	friendNotes = {},
 	blockedNoteSenderUserIds = {},
 	arcadeTickets = 0,
 }
