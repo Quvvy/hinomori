@@ -3,9 +3,10 @@
 local RhythmScoring = {}
 
 RhythmScoring.LANE_COUNT = 4
-RhythmScoring.APPROACH_SECONDS = 1.65
+RhythmScoring.BASE_APPROACH_SECONDS = 1.65
 RhythmScoring.FINISH_PADDING_SECONDS = 1.2
 RhythmScoring.MAX_NOTE_SCORE = 1000
+RhythmScoring.HOLD_RELEASE_WINDOW_MS = 140
 
 RhythmScoring.KEY_LABELS = { "D", "F", "J", "K" }
 RhythmScoring.KEY_CODES = {
@@ -18,25 +19,25 @@ RhythmScoring.KEY_CODES = {
 RhythmScoring.JUDGMENTS = {
 	{
 		name = "Perfect",
-		windowMs = 45,
+		windowMs = 60,
 		score = 1000,
 		weight = 1,
 	},
 	{
 		name = "Great",
-		windowMs = 85,
+		windowMs = 115,
 		score = 700,
 		weight = 0.72,
 	},
 	{
 		name = "Good",
-		windowMs = 130,
+		windowMs = 180,
 		score = 400,
 		weight = 0.42,
 	},
 }
 
-RhythmScoring.MISS_WINDOW_MS = 165
+RhythmScoring.MISS_WINDOW_MS = 230
 
 export type JudgmentCounts = {
 	perfect: number,
@@ -44,6 +45,10 @@ export type JudgmentCounts = {
 	good: number,
 	miss: number,
 }
+
+function RhythmScoring.approachSecondsForScrollSpeed(scrollSpeed: number): number
+	return RhythmScoring.BASE_APPROACH_SECONDS / math.max(scrollSpeed, 0.1)
+end
 
 function RhythmScoring.judgeDelta(deltaMs: number): (string?, number, number)
 	local absoluteDelta = math.abs(deltaMs)
