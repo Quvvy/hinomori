@@ -108,6 +108,13 @@
             "ArcadeServiceShared": {
               "$path": "src/services/ArcadeService/ArcadeServiceShared.luau"
             }
+          },
+
+          "GarageJamService": {
+            "$className": "Folder",
+            "GarageJamServiceClient": {
+              "$path": "src/services/GarageJamService/GarageJamServiceClient.luau"
+            }
           }
         }
       }

@@ -12,6 +12,7 @@ local CLIENT_SERVICE_ORDER = {
 	"NoteService",
 	"HandOffService",
 	"ArcadeService",
+	"GarageJamService",
 }
 
 local loadedClients: { any } = {}

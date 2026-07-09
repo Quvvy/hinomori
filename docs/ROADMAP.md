@@ -184,7 +184,7 @@ Manual Studio verification still open:
 - [x] Polish school/arcade blockout only where it improves readability
 - [x] Confirm desktop and mobile-ish viewport readability for main V0 UI
 
-## Phase 8 - Garage Social Jam (Future, Direction 1)
+## Phase 8 - Garage Social Jam (Prototype V0 Started)
 
 Purpose: add a cozy co-op music hangout without competing with the arcade rhythm game.
 
@@ -193,6 +193,15 @@ Garage thesis:
 > Arcade = "watch me beat you." Garage = "let's sound good together."
 
 V1 should be a social jam toy, not a second rhythm game.
+
+Prototype V0 now exists as a local-only stem station test. See `docs/GARAGE_SOCIAL_JAM_V0.md`.
+
+- [x] One blockout garage space
+- [x] Four local stem stations: drums, bass, guitar, voice
+- [x] Station prompts play/stop already-uploaded Workspace stem Sounds
+- [x] Local stem layering
+- [x] No full mix usage
+- [x] No scoring, charts, persistence, economy, monetization, band naming, or new rhythm engine
 
 - [ ] One garage space
 - [ ] One original or properly licensed song
