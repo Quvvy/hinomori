@@ -1,0 +1,16 @@
+--!strict
+
+return {
+	HANDOFF_KIND_SNACK = "Snack",
+	HANDOFF_KIND_NOTE = "Note",
+	HANDOFF_KIND_CHARM = "Charm",
+
+	STATUS_PENDING = "Pending",
+	STATUS_ACCEPTED = "Accepted",
+	STATUS_DECLINED = "Declined",
+	STATUS_EXPIRED = "Expired",
+	STATUS_CANCELLED = "Cancelled",
+
+	OFFER_EXPIRE_SECONDS = 15,
+	VISUAL_DISPLAY_SECONDS = 4,
+}

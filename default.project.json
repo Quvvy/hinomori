@@ -1,0 +1,185 @@
+{
+  "name": "Hinomori",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
+
+      "Packages": {
+        "$path": "Packages",
+        "ProfileStore": {
+          "$path": "ServerPackages/ProfileStore.lua"
+        }
+      },
+
+      "UI": {
+        "$path": "src/ui"
+      },
+
+      "Shared": {
+        "$className": "Folder",
+
+        "Modules": {
+          "$className": "Folder",
+          "Core": {
+            "$path": "src/modules/Core"
+          },
+          "Game": {
+            "$path": "src/modules/Game"
+          },
+          "Math": {
+            "$path": "src/modules/Math"
+          },
+          "Platform": {
+            "$path": "src/modules/Platform"
+          }
+        },
+
+        "Data": {
+          "$path": "src/shared/Data.luau"
+        },
+
+        "Services": {
+          "$className": "Folder",
+
+          "DataService": {
+            "$className": "Folder",
+            "DataServiceClient": {
+              "$path": "src/services/DataService/DataServiceClient.luau"
+            },
+            "DataServiceShared": {
+              "$path": "src/services/DataService/DataServiceShared.luau"
+            }
+          },
+
+          "SessionService": {
+            "$className": "Folder",
+            "SessionServiceClient": {
+              "$path": "src/services/SessionService/SessionServiceClient.luau"
+            },
+            "SessionServiceShared": {
+              "$path": "src/services/SessionService/SessionServiceShared.luau"
+            }
+          },
+
+          "LockerService": {
+            "$className": "Folder",
+            "LockerServiceClient": {
+              "$path": "src/services/LockerService/LockerServiceClient.luau"
+            },
+            "LockerServiceShared": {
+              "$path": "src/services/LockerService/LockerServiceShared.luau"
+            },
+            "LockerWorld": {
+              "$path": "src/services/LockerService/LockerWorld.luau"
+            },
+            "LockerVisuals": {
+              "$path": "src/services/LockerService/LockerVisuals.luau"
+            }
+          },
+
+          "NoteService": {
+            "$className": "Folder",
+            "NoteServiceClient": {
+              "$path": "src/services/NoteService/NoteServiceClient.luau"
+            },
+            "NoteServiceShared": {
+              "$path": "src/services/NoteService/NoteServiceShared.luau"
+            }
+          },
+
+          "HandOffService": {
+            "$className": "Folder",
+            "HandOffServiceClient": {
+              "$path": "src/services/HandOffService/HandOffServiceClient.luau"
+            },
+            "HandOffServiceShared": {
+              "$path": "src/services/HandOffService/HandOffServiceShared.luau"
+            }
+          },
+
+          "ArcadeService": {
+            "$className": "Folder",
+            "ArcadeServiceClient": {
+              "$path": "src/services/ArcadeService/ArcadeServiceClient.luau"
+            },
+            "ArcadeServiceShared": {
+              "$path": "src/services/ArcadeService/ArcadeServiceShared.luau"
+            }
+          }
+        }
+      }
+    },
+
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
+
+      "ServerPackages": {
+        "$path": "ServerPackages"
+      },
+
+      "Server": {
+        "$path": "src/startup/Server.server.luau"
+      },
+
+      "Services": {
+        "$className": "Folder",
+
+        "DataService": {
+          "$className": "Folder",
+          "DataServiceServer": {
+            "$path": "src/services/DataService/DataServiceServer.luau"
+          }
+        },
+
+        "SessionService": {
+          "$className": "Folder",
+          "SessionServiceServer": {
+            "$path": "src/services/SessionService/SessionServiceServer.luau"
+          }
+        },
+
+        "LockerService": {
+          "$className": "Folder",
+          "LockerServiceServer": {
+            "$path": "src/services/LockerService/LockerServiceServer.luau"
+          }
+        },
+
+        "NoteService": {
+          "$className": "Folder",
+          "NoteServiceServer": {
+            "$path": "src/services/NoteService/NoteServiceServer.luau"
+          }
+        },
+
+        "HandOffService": {
+          "$className": "Folder",
+          "HandOffServiceServer": {
+            "$path": "src/services/HandOffService/HandOffServiceServer.luau"
+          }
+        },
+
+        "ArcadeService": {
+          "$className": "Folder",
+          "ArcadeServiceServer": {
+            "$path": "src/services/ArcadeService/ArcadeServiceServer.luau"
+          }
+        }
+      }
+    },
+
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Client": {
+          "$path": "src/startup/Client.client.luau"
+        }
+      }
+    }
+  }
+}

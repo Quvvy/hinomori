@@ -1,0 +1,33 @@
+---
+description: LLM Wiki ingest — when user asks to ingest, query, or lint the design wiki
+alwaysApply: false
+---
+
+# Design wiki (llm-wiki)
+
+Wiki vault: `C:\Users\elifs\Projects\llm-wiki`
+
+When the user asks to **ingest**, **query**, or **lint** the wiki:
+
+1. Read `C:\Users\elifs\Projects\llm-wiki\AGENTS.md` and follow it exactly.
+2. Raw sources for this game live in `C:\Users\elifs\Projects\llm-wiki\raw\hinomori\`.
+3. Never modify `raw/` — only write to `wiki/` and `outputs/`.
+4. Tag Hinomori pages with `hinomori` in frontmatter.
+5. Use `[[wikilinks]]` for internal references (Obsidian graph view).
+
+## Sync sources from this repo
+
+Before ingest, copy updated docs when the user asks to sync:
+
+| Game repo | Wiki raw |
+|-----------|----------|
+| `docs/GDD.md` | `raw/hinomori/GDD.md` |
+| `docs/ROADMAP.md` | `raw/hinomori/ROADMAP.md` |
+| `README.md` | `raw/hinomori/README.md` |
+| `AGENTS.md` | `raw/hinomori/AGENTS.md` |
+
+## Ingest operations
+
+- **Ingest** — read raw source → `wiki/sources/` + entities/concepts → update index + log.
+- **Query** — read `wiki/index.md` first, synthesize with citations.
+- **Lint** — health check → `outputs/lint-YYYY-MM-DD.md` + log entry.

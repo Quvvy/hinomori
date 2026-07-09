@@ -1,0 +1,24 @@
+---
+description: Roblox Luau and Rojo project rules for Hinomori
+globs:
+  - "**/*.lua"
+  - "**/*.luau"
+  - "default.project.json"
+alwaysApply: true
+---
+
+# Hinomori Roblox Luau Rules
+
+- Roblox Luau project using Rojo 7.7 and Wally packages.
+- Co-located services live in `src/services/<Name>/` with Client, Server, Shared modules.
+- Server modules sync to `ServerScriptService.Services`; client/shared sync to `ReplicatedStorage.Shared.Services`.
+- Startup scripts: `src/startup/Server.server.luau`, `src/startup/Client.client.luau`.
+- Shared utilities: `src/modules/` (Core, Game, Math, Platform).
+- UI: `src/ui/` — modular initializer pattern; no monolithic UIController.
+- Player data: `src/shared/Data.luau` via DataServiceTyped; mutate only through DataService on server.
+- Networking: Networker only; whitelist client-callable methods explicitly on each service server.
+- Never trust client for locker state, notes, hand-offs, arcade scores, or inventory.
+- Prefer plain Luau modules over Knit/Roact/Fusion unless explicitly requested.
+- Do not invent Roblox APIs.
+- Map geometry stays in Studio; do not put world building logic in repo scripts unless requested.
+- Tag new systems with implementation status from AGENTS.md (Implemented / Prototype / Planned).
