@@ -18,6 +18,8 @@ local GameConfig = {
 
 	ARCADE_QUEUE_MAX = 8,
 	ARCADE_SPECTATOR_MAX = 12,
+
+	GARAGE_INTERACT_DISTANCE = 14,
 }
 
 return GameConfig

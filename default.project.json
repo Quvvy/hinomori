@@ -175,6 +175,13 @@
           "ArcadeServiceServer": {
             "$path": "src/services/ArcadeService/ArcadeServiceServer.luau"
           }
+        },
+
+        "GarageJamService": {
+          "$className": "Folder",
+          "GarageJamServiceServer": {
+            "$path": "src/services/GarageJamService/GarageJamServiceServer.luau"
+          }
         }
       }
     },

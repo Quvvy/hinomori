@@ -11,6 +11,7 @@ local SERVICE_ORDER = {
 	"NoteService",
 	"HandOffService",
 	"ArcadeService",
+	"GarageJamService",
 }
 
 local loadedServices: { any } = {}

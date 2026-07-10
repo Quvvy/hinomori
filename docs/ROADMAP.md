@@ -197,9 +197,11 @@ V1 should be a social jam toy, not a second rhythm game.
 Prototype V0 now exists as a local-only stem station test. See `docs/GARAGE_SOCIAL_JAM_V0.md`.
 
 - [x] One blockout garage space
-- [x] Four local stem stations: drums, bass, guitar, voice
-- [x] Station prompts play/stop already-uploaded Workspace stem Sounds
-- [x] Local stem layering
+- [x] Rehearsal board Practice gate before instrument interaction
+- [x] Four shared-occupancy stem stations: drums, bass, guitar, voice
+- [x] Station prompts request server-authoritative join/leave
+- [x] One instrument per player and one occupant per station
+- [x] Shared jam clock for local stem alignment across clients
 - [x] No full mix usage
 - [x] No scoring, charts, persistence, economy, monetization, band naming, or new rhythm engine
 

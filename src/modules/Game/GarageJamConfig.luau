@@ -14,6 +14,9 @@ local GarageJamConfig = {
 	WORLD_PATH = { "World", "Garage", "GarageJam_001" },
 	PROMPT_PART_NAME = "PromptPart",
 	PROMPT_BOUND_ATTRIBUTE = "HinomoriGarageJamBound",
+	BOARD_MODEL_NAME = "RehearsalBoard",
+	BOARD_PROMPT_BOUND_ATTRIBUTE = "HinomoriGarageBoardBound",
+	PLAYER_ANCHOR_NAME = "PlayerAnchor",
 }
 
 GarageJamConfig.STATIONS = {
@@ -63,6 +66,56 @@ function GarageJamConfig.getWorldRoot(): Model?
 	end
 
 	return if current:IsA("Model") then current else nil
+end
+
+function GarageJamConfig.getBoardModel(): Model?
+	local root = GarageJamConfig.getWorldRoot()
+	if not root then
+		return nil
+	end
+
+	local board = root:FindFirstChild(GarageJamConfig.BOARD_MODEL_NAME)
+	return if board and board:IsA("Model") then board else nil
+end
+
+function GarageJamConfig.getBoardPromptPart(): BasePart?
+	local board = GarageJamConfig.getBoardModel()
+	if not board then
+		return nil
+	end
+
+	local promptPart = board:FindFirstChild(GarageJamConfig.PROMPT_PART_NAME)
+	return if promptPart and promptPart:IsA("BasePart") then promptPart else nil
+end
+
+function GarageJamConfig.getStationModel(station: GarageStationConfig): Model?
+	local root = GarageJamConfig.getWorldRoot()
+	if not root then
+		return nil
+	end
+
+	local stationModel = root:FindFirstChild(station.modelName)
+	return if stationModel and stationModel:IsA("Model") then stationModel else nil
+end
+
+function GarageJamConfig.getStationPromptPart(station: GarageStationConfig): BasePart?
+	local stationModel = GarageJamConfig.getStationModel(station)
+	if not stationModel then
+		return nil
+	end
+
+	local promptPart = stationModel:FindFirstChild(GarageJamConfig.PROMPT_PART_NAME)
+	return if promptPart and promptPart:IsA("BasePart") then promptPart else nil
+end
+
+function GarageJamConfig.getStationPlayerAnchor(station: GarageStationConfig): BasePart?
+	local stationModel = GarageJamConfig.getStationModel(station)
+	if not stationModel then
+		return nil
+	end
+
+	local anchor = stationModel:FindFirstChild(GarageJamConfig.PLAYER_ANCHOR_NAME)
+	return if anchor and anchor:IsA("BasePart") then anchor else nil
 end
 
 function GarageJamConfig.getStation(stationId: string): GarageStationConfig?
