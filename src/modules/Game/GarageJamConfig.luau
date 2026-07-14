@@ -23,10 +23,9 @@ GarageJamConfig.STATIONS = {
 	{
 		id = "drums",
 		displayName = "Drums",
-		credit = "Peter Brown",
 		modelName = "DrumsStation",
 		soundPath = "Workspace.Wheatus-Teenage Dirtbag-drums-05-29-2026",
-		joinText = "Joined drums - Peter Brown.",
+		joinText = "Joined drums.",
 		leaveText = "Left drums.",
 	},
 	{
@@ -126,6 +125,20 @@ function GarageJamConfig.getStation(stationId: string): GarageStationConfig?
 	end
 
 	return nil
+end
+
+function GarageJamConfig.getStationSound(station: GarageStationConfig): Sound?
+	local sound = GarageJamConfig.resolvePath(station.soundPath)
+	return if sound and sound:IsA("Sound") then sound else nil
+end
+
+function GarageJamConfig.getSoundForKey(soundKey: string): Sound?
+	local station = GarageJamConfig.getStation(soundKey)
+	if not station then
+		return nil
+	end
+
+	return GarageJamConfig.getStationSound(station)
 end
 
 function GarageJamConfig.resolvePath(path: string): Instance?

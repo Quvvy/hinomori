@@ -13,21 +13,15 @@ Do not optimize for "more features shipped." Optimize for preserving the rural s
 Read these before touching code:
 
 1. `AGENTS.md`
-2. `docs/GDD.md`
-3. `docs/ROADMAP.md`
-4. the current slice plan in `docs/`
-5. relevant wiki pages in `C:\Users\elifs\Projects\llm-wiki`
+2. `README.md`
+3. `docs/CURRENT_STATE.md`
+4. `docs/GDD.md`
+5. `docs/ARCHITECTURE.md`
+6. `docs/STUDIO_WORLD.md`
+7. `docs/ROADMAP.md`
+8. the current approved slice plan and relevant subsystem document
 
-For V0, the core wiki pages are:
-
-- `wiki/concepts/hinomori-vertical-slice-v0.md`
-- `wiki/concepts/hinomori-student-life-game.md`
-- `wiki/concepts/school-locker-desk-split.md`
-- `wiki/concepts/template-note-tier-system.md`
-- `wiki/concepts/generic-player-hand-off-system.md`
-- `wiki/concepts/rhythm-stage-system.md`
-
-If the repo and wiki disagree, stop and call out the conflict before implementing.
+The repository is the collaborator-facing source of truth. The owner's private llm-wiki is optional provenance and must not be required for implementation.
 
 ## Scope Discipline
 
@@ -38,6 +32,7 @@ Allowed V0 spine:
 - generic hand-off pipeline
 - one arcade cabinet pair with queue/spectators
 - minimal session flow tying school to after-school
+- one garage Practice space with shared station occupancy and prototype skill charts
 
 Do not add these without explicit user approval:
 
@@ -90,7 +85,7 @@ Acceptable prototype placeholders:
 Stop and ask before proceeding if:
 
 - a change would expand beyond V0 scope
-- a feature needs product direction not covered by the wiki/plan
+- a feature needs product direction not covered by the GDD/roadmap/approved plan
 - persistence or moderation behavior would become more permanent than the slice plan states
 - a real asset is required
 - implementation would require deleting or rewriting unrelated user work

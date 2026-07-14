@@ -1,282 +1,383 @@
 # ROADMAP - Hinomori
 
-## Product Thesis
+## North Star
 
-Hinomori is a peaceful rural Japanese student roleplay game for Roblox. The core loop is not a strict school schedule. It is a shared student-life home base that gives players identity, social prompts, small objects to exchange, and after-school reasons to gather.
+Hinomori is a peaceful rural Japanese student-life roleplay game. The fantasy is not completing a school timetable or grinding an economy. It is gradually feeling known in a small town: having a locker, recognizing familiar places, sharing small objects, making after-school plans, and collecting memories of ordinary days.
 
-Current design thesis:
+> I wish I lived in this town.
 
-> School is where your student life has a place. After school is where the memorable plans happen.
+The product should create three feelings in order:
 
-Primary loop:
+1. **I belong here.** My student, locker, and familiar places recognize me.
+2. **Other people matter.** The world gives us gentle reasons to notice and approach each other.
+3. **I want to see another day.** Weather, seasons, gatherings, and small discoveries vary the ritual without turning it into chores.
 
-1. Arrive at school.
-2. Check locker / homeroom / day state.
-3. Use small social toys: notes, snacks, hand-offs, locker expression.
-4. Shift into after-school.
-5. Gather at an activity such as the arcade.
-6. Earn a small memory item that feeds back into locker identity.
+The current game is a **prototype**, not a finished town. Locker identity, notes, snack hand-offs, arcade play, session flow, garage occupancy, and garage practice charts exist, but several systems and world objects are still one-off or placeholder implementations.
 
-## Scope Rules
+## Product Pillars
 
-- Prefer small public identity spaces over private housing. Locker first; dorms much later, maybe never.
-- Use soft world states instead of a rigid class schedule.
-- Build social systems as reusable primitives: notes, snacks, charms, tickets, and gifts should all sit on the same hand-off foundation when possible.
-- Keep stranger communication template/sticker based. Free text for strangers is out of scope because of moderation and harassment risk.
-- Do not add monetization, rerolls, paid identity framing, or large generic game panels while the core roleplay loop is still being proven.
-- Validate small versions before building expensive systems.
+### Place Before Feature Count
 
-## Phase 0 - Scaffold (Done)
+Every location needs a social purpose, a visual identity, and a reason to pass through it. A larger empty map is worse than a compact town where players repeatedly cross paths.
 
-- [x] Rojo + Wally project structure (Leif co-located services)
-- [x] DataServiceTyped profile schema
-- [x] Networker wiring for V0 services
-- [x] Modular UI initializer
-- [x] Studio world folders for School, Town, Arcade, lockers, classroom desks, and arcade scaffold
+### Rituals Before Grind
 
-## Phase 1 - Locker Identity (Prototype)
+Return reasons should feel like school life: checking a locker, meeting at the arcade, walking home in rain, seeing a seasonal notice, or keeping a photo. Avoid streak anxiety, mandatory chores, and paid relief from friction.
 
-- [x] Locker interaction prompts in `Workspace.World.School.LockerHallway`
-- [x] Server-authoritative locker customization
-- [x] Persistent locker recognition across sessions
-- [x] Template stranger notes stub with owner controls
-- [x] Copy-paste-safe locker IDs/tags generated at runtime
+### Expression Through Small Things
 
-Design direction:
+Identity should accumulate through chosen details: locker decor, bag charms, stationery, photos, stickers, outfits, and keepsakes. Do not sell random body traits or identity rerolls.
 
-- Locker = persistent identity over time.
-- Desk/seat = optional rotating social friction later, not core identity.
-- Locker hallway should be a social center, not just a menu access point.
-- Locker rewards should come from school/after-school life: arcade stickers, photo strips, band stickers, charms, notes, seasonal items.
+### Diegetic By Default
 
-## Phase 2 - Hand-Off And Notes (Prototype)
+Use school paper, phones, signs, boards, counters, cabinets, and physical interaction points. Keep the permanent HUD tiny. Generic quest, inventory, and shop panels are a last resort.
 
-- [x] Stranger template note send/receive with rate limits
-- [x] Owner controls: disable strangers, clear, block
-- [x] Unified offer/accept/decline pipeline for snack skin
-- [x] Distance + cooldown validation
-- [x] Friend-tier free text after stranger loop works (Roblox friends only, `TextService` filtered — see `docs/FRIEND_NOTES_PLAN.md`)
-- [ ] Offline locker note delivery
+### Social Safety Is Gameplay Quality
 
-Design direction:
+Stranger communication stays template based. Free text remains filtered and relationship gated. Rate limits, distance checks, blocking, clearing, and graceful failure are part of the feature, not cleanup work.
 
-- Stranger notes stay template/sticker based.
-- Friend free text is later and must still use Roblox filtering.
-- Template notes need behavior safety, not just content safety: rate limits, owner clear, disable strangers, block/report affordances.
-- Generic hand-off should remain the base for notes, snack sharing, charm gifting, photo strips, tickets, and future small objects.
+## Town Shape
 
-## Phase 3 - Arcade Social Stage (Prototype)
+Hinomori should become a **compact open town**, not an enormous seamless map and not a menu of teleports.
 
-- [x] Cabinet queue + spectator spots
-- [x] Solo + 1v1 flow
-- [x] First playable four-lane rhythm loop with text chunk maps
-- [x] Multiple test songs/maps
-- [x] Compact cabinet/result UI styling
+The player should usually be free to choose where to go, while the world uses soft rhythms to concentrate people. School arrival, lunch, after school, weather, and local events change what feels relevant; they do not lock players into a strict timetable.
 
-Design direction:
+Recommended first town topology:
 
-- Arcade = competitive precision and social stage.
-- The core fantasy is: "watch me beat you."
-- Keep the cabinet readable from outside: queue, current players, score/combo/result, and spectator reactions.
-- Two dance machines / participant slots are the right direction for 1v1.
-- Future modes should be architected as slots + rulesets, not one hardcoded cabinet interaction.
-
-Potential future arcade modes:
-
-- Solo
-- 1v1
-- 1v1v1v1
-- 2v2
-- Co-op score
-- Relay / crowd challenge
-
-## Phase 3.5 - Rhythm Engine Quality Pass (Done)
-
-Purpose: improve the existing arcade rhythm engine before building more arcade or garage content.
-
-- [x] Add hold-note gameplay using the existing `timeMs,lane,holdMs` parser format
-- [x] Keep each chart row as one judgment for server result compatibility
-- [x] Add session-local scroll speed setting, default `2.5x`, adjustable `0.8x` to `3.0x`
-- [x] Widen timing windows so a competent 4-key player is not punished unfairly
-- [x] Add a small number of test holds to the Easy and Medium placeholder maps
-- [x] Do not add chord notes, band systems, auto-chart tooling, settings persistence, DataService changes, or new Networker methods in this pass
-
-Target timing windows:
-
-| Judgment | Target Window |
-| --- | --- |
-| Perfect | 60ms |
-| Great | 115ms |
-| Good | 180ms |
-| Miss | 230ms |
-
-Hold-note behavior:
-
-- Press the hold head inside the normal timing window.
-- Keep the key held until near the hold end.
-- Release too early = dropped hold / miss / combo break.
-- Release near or after the end = complete the note with one judgment based on head timing.
-- Auto-complete if the player is still holding when the end passes.
-
-Verification:
-
-```powershell
-stylua src
-selene src
-rojo build default.project.json -o build\rhythm-holds-settings.rbxl
+```text
+                     [Hill / Shrine]
+                           |
+[River Path] -- [School] -- [Shopping Street] -- [Arcade]
+                    |              |
+                [Bus Stop]     [Conbini]
+                    |
+                 [Garage]
 ```
 
-Studio checks:
+This is a relationship diagram, not a final literal layout. The important properties are:
 
-- Tap notes still work.
-- Hold notes render visibly longer than taps.
-- Early hold release misses.
-- Holding through the end scores once.
-- Scroll speed changes note approach speed.
-- Solo and 1v1 result submission still clear the active match.
+- School, shopping street, and arcade form a short, legible main route.
+- The garage is discoverable but slightly tucked away, making it feel personal.
+- The river and shrine are quieter edge destinations with views and seasonal value.
+- Players can see or infer their next destination from landmarks, signs, terrain, and pedestrian flow.
+- Crossing the active core on foot should take roughly 60-90 seconds, subject to playtesting.
+- Important routes should offer at least two choices later, but V1 can begin with one polished loop.
 
-See `docs/RHYTHM_FIRST_PASS.md` for map format and Studio checklist.
+Do not build the whole town at once. Block out the topology first, test travel time and player convergence, then finish one route and one destination at a time.
 
-## Phase 4 - Session And Diegetic UI (Prototype)
+## Architecture Direction
 
-- [x] Bus prologue -> school -> after-school phase transitions
-- [x] Phone + paper + world-surface UI language
-- [x] Removed assigned desks from session flow
-- [x] First-time transfer card asks for name only
+### Builder Contract
 
-Design direction:
+A builder should be able to duplicate a supported world prefab, move it, and press Play. They should not need to rename every copy, edit service code, or wire remotes by hand.
 
-- UI surfaces should be tiny HUD, student phone, school paper/card, or world-device surface.
-- Avoid generic dark prototype panels as the default.
-- No Gakuran clone, no paid random identity framing, no reroll screen.
-- First-day guidance should use diegetic UI primitives instead of a large quest panel.
+The intended contract for repeatable world objects is:
 
-## Phase 5 - Copy-Paste World Setup (Prototype)
+1. The model has a semantic `CollectionService` tag such as `HinomoriLocker` or `HinomoriArcadeCabinet`.
+2. The model follows a small documented child contract such as `PromptPart`, `ProximityPrompt`, anchors, slots, or display surfaces.
+3. Runtime discovery assigns or repairs a unique attribute ID.
+4. A binder validates the model and attaches behavior once.
+5. Invalid copies warn once and are skipped without breaking unrelated UI or services.
+6. A Studio authoring command can validate or stamp prefabs before publishing, but runtime remains resilient.
 
-- [x] Runtime-generated locker/desk tags and IDs for builder-safe copy-paste
-- [x] Locker assignment uses discovered lockers instead of a hard-coded six-locker limit
-- [x] Placeholder classroom desks replaced with `SchoolDesk` + `SchoolChair` stations
-- [x] Hidden functional seats added to new chair stations
+Names should remain readable for builders, but names should not be identity or registration requirements.
 
-## Phase 6 - First-Day Loop Guidance (Prototype)
+### Build Once, Skin Many Times
 
-- [x] Gentle first-day homeroom note using the diegetic UI primitives
-- [x] Server-session progress hooks for locker, decor, note, snack, after-school, and arcade actions
-- [x] No new economy, quest rewards, monetization, schedule sim, or out-of-scope school systems
+Reusable systems should be modular where they remove repeated behavior:
 
-## Phase 7 - V0 Hardening (In Progress)
-
-Repo hardening shipped (see `docs/V0_HARDENING_PLAN.md`):
-
-- [x] Structured stranger-note send results with proximity check and user-facing toasts
-- [x] All stranger templates selectable from locker menu; display names on note slips
-- [x] Per-note block affordance for locker owners
-- [x] Cancel outgoing snack hand-off offer from phone UI
-- [x] Leave arcade spectator list from cabinet menu
-- [x] QA runbooks documented for notes/snack, Solo arcade, and 1v1 arcade
-- [x] Studio blockout readability checklist documented (user applies in Studio)
-
-Manual Studio verification still open:
-
-- [x] Manual two-player pass for notes and snack hand-off
-- [x] Manual arcade pass for Solo and 1v1 rhythm completion
-- [x] Verify rhythm timing after the hold/scroll-speed pass
-- [x] Polish school/arcade blockout only where it improves readability
-- [x] Confirm desktop and mobile-ish viewport readability for main V0 UI
-
-## Phase 8 - Garage Social Jam (Prototype V0 Started)
-
-Purpose: add a cozy co-op music hangout without competing with the arcade rhythm game.
-
-Garage thesis:
-
-> Arcade = "watch me beat you." Garage = "let's sound good together."
-
-V1 should be a social jam toy, not a second rhythm game.
-
-Prototype V0 now exists as a local-only stem station test. See `docs/GARAGE_SOCIAL_JAM_V0.md`.
-
-- [x] One blockout garage space
-- [x] Rehearsal board Practice gate before instrument interaction
-- [x] Four shared-occupancy stem stations: drums, bass, guitar, voice
-- [x] Station prompts request server-authoritative join/leave
-- [x] One instrument per player and one occupant per station
-- [x] Shared jam clock for local stem alignment across clients
-- [x] No full mix usage
-- [x] No scoring, charts, persistence, economy, monetization, band naming, or new rhythm engine
-
-- [ ] One garage space
-- [ ] One original or properly licensed song
-- [ ] One arrangement, one stem set
-- [ ] Instrument slots fade stems in/out when occupied or empty
-- [ ] Avatar instrument animations
-- [ ] Spectators can hang out nearby
-- [ ] End with a small memory reward: photo, sticker, or demo tape
-- [ ] No scoring, no charts, no moods, no band-name dependency in V1
-
-Audio/content constraints:
-
-- Use pre-rendered stems, not procedural instrument synthesis.
-- Do not use Songsterr/commercial tab data in the released game unless rights are secured.
-- For final songs, prefer original/commissioned tracks with full mix, stems, BPM/tempo map, and MIDI/Guitar Pro/MusicXML if needed later.
-- Mood variants multiply content cost quickly, so save chill/upbeat/intense stem variants for later.
-
-## Phase 9 - Garage Skill Layer (Future, Only If Earned)
-
-Only build this if Garage Social Jam proves players gather around it and want more challenge.
-
-Rules:
-
-- Reuse the existing arcade rhythm engine where possible.
-- Do not create separate instrument minigames for V1.5.
-- Instrument identity should first come from chart density, pacing, lane labels, animation, stem behavior, and result flavor.
-- Chord hits and hold notes are real engine features, not "just charting." Holds are acceptable only after the rhythm quality pass implements them.
-- Auto-chart tooling is not needed until multiple original songs exist and charting becomes a real bottleneck.
-
-Possible same-engine instrument feel:
-
-| Instrument | Same-Engine Feel |
+| Foundation | Used By |
 | --- | --- |
-| Drums | Busier percussive patterns; kick/snare/hat/crash labels |
-| Bass | Sparse grooves, holds, weighty feedback |
-| Guitar | Clustered rhythms, riff bursts, later true chord input if worth it |
-| Keyboard | Repeated melodic motifs, later pattern memory if worth it |
+| World registry + prefab validation | Lockers, cabinets, boards, benches, vending machines, shops, activity stations |
+| Interaction binder | Prompts, distance checks, busy states, local affordances |
+| Slot/ruleset activity framework | Arcade cabinets, garage stations, festival games, sports tables |
+| Hand-off pipeline | Snacks, notes, charms, tickets, photos, gifts |
+| Item/catalog metadata | Decor, hand props, shop stock, memory rewards |
+| World-state service | Time band, weather, season, event flags, location availability |
+| Location/landmark registry | Spawn routing, guidance, analytics, ambient audio, map signs |
+| Surface UI primitives | Paper, phone, world devices, counters, result slips |
+| Seating/pose binder | Chairs, benches, stools, picnic spots, photo poses |
+| Ambient-zone system | Music, insects, train sounds, lighting and weather transitions |
 
-Result feedback should be celebratory only:
+Do not create a universal framework for every prop. Static scenery stays scenery. Build a reusable foundation only when at least two real features share behavior or when builder error would otherwise scale with every copy.
 
-- Good: "Band Chemistry: B+", "Bass locked in", "Best moment: final chorus"
-- Avoid: worst-performer callouts, harsh ranking, or competitive shaming
+### Important Copy-Paste-Safe World Types
 
-## Phase 10 - Band Identity (Future, Additive)
+These should eventually follow the builder contract:
 
-Band identity is cool but should not block Garage V1.
+- **Lockers:** unique persistent IDs, decor slots, prompt, note surface.
+- **Arcade cabinets:** unique cabinet IDs, player slots, spectator anchors, supported rulesets, screen surfaces.
+- **Garage/rehearsal spaces:** room ID, rehearsal board, instrument stations, player anchors, audio set key.
+- **Instrument stations:** station ID, instrument key, prompt, player anchor, optional cable boundary.
+- **Boards and notice surfaces:** board ID, content channel, prompt or physical display.
+- **Vending machines and shop counters:** vendor ID, stock catalog key, interaction point, display anchors.
+- **Benches, chairs, and stools:** seat tag, pose/occupancy metadata, optional social grouping ID.
+- **Photo spots:** camera anchor, participant anchors, framing metadata, location/season stamp.
+- **Bus stops and doors:** route or destination key, arrival anchor, availability rules.
+- **Activity props:** activity type, participant slots, spectator slots, ruleset key.
+- **Ambient zones:** location key, priority, soundscape key, lighting/weather modifiers.
+- **Spawn and landmark points:** stable semantic key, not hand-maintained numbered names.
 
-Possible features:
+## Current Systems Audit
 
-- Band name
-- Preset logo builder
-- Garage poster
-- Demo tape label
-- Band sticker for lockers
-- School festival signup
-- Instrument customization
-- Part-time job money feeding into band cosmetics
+### Prototype And Worth Keeping
 
-This should layer on top of proven garage play, not come before it.
+- Co-located client/server/shared service pattern with explicit startup order.
+- DataServiceTyped profile ownership and Networker whitelist pattern.
+- Server-authoritative locker, note, hand-off, arcade, and garage state changes.
+- Modular UI bootstrap and phone/paper/world-surface visual language.
+- `WorldAutoIds` sequential ID repair used by lockers and desks.
+- Catalog-driven locker decor, hand-off items, arcade songs, and garage charts.
+- Shared four-key rhythm engine with taps, holds, results, and garage-only options.
 
-## Future School/Town Content Ideas
+### Main Scaling Gaps
 
-These are good ideas, but they should wait until the V0 loop is fun.
+- Arcade configuration assumes one named `CabinetPair_001`.
+- Garage configuration assumes one named `GarageJam_001` and four named stations.
+- Prompt binding and world lookup patterns are repeated across systems.
+- Runtime auto-ID support is folder-based and currently specialized to lockers/desks.
+- There is no unified prefab validation report or builder-facing authoring command.
+- Session phases are prototype global states, not yet a coherent town clock/world-state model.
+- Items are split across small catalogs without a shared item outcome/ownership model.
+- No location registry, ambient-zone framework, analytics funnel, or performance budget exists.
+- Existing world and UI flows still require regression testing whenever a new location mounts.
+- Commercial Teenage Dirtbag audio/charts are prototype content and cannot be treated as release-ready.
 
-- Lunch/snack spot with trading and sitting together
-- School store / vending machine daily rotation
-- Cleaning ritual as a short co-op school-life activity
-- PE/gym activity such as dodgeball, table tennis, relay, or paper airplane contest
-- Music room, art room, computer room as social toy spaces
-- Conbini, river, shrine, bus stop, rainy-day route
-- Desk customization after locker identity is stable
-- Soft day prompts on the school board
+## Milestone 0 - Stabilize The Prototype
 
-## Out Of Scope (V0)
+**Status:** Next
 
-PE, music room, cleaning duty, full class schedule, dorms, multiple classrooms, clubs, city bus, complex NPC relationship trees, auto-chart tooling, band stats, paid rerolls, monetization UI, and any large system that does not directly prove the locker/social/arcade loop.
+**Player outcome:** The current school -> social -> arcade/garage loop works reliably before the map expands.
+
+Work:
+
+- Establish one repeatable baseline smoke test for startup, transfer card, locker, notes, snack, arcade Solo/1v1, garage Practice, station leave, and respawn cleanup.
+- Add focused automated tests for pure modules: ID assignment, catalogs, rhythm parsing/scoring, and state transitions where practical.
+- Resolve stale prototype fields and documentation deliberately; do not silently migrate profile data.
+- Audit mobile input and mobile-ish UI readability, especially rhythm and world prompts.
+- Confirm every service fails locally when its world objects are absent instead of breaking startup.
+- Record a small performance baseline for client memory, server script time, instance count, and initial load.
+
+Exit gate:
+
+- Automated format/lint/build pass.
+- One-player and two-player Studio checklist pass.
+- No known regression in the current V0 spine.
+- Prototype-only licensed audio is clearly marked and isolated.
+
+## Milestone 1 - Builder-Safe World Foundation
+
+**Status:** Planned
+
+**Player outcome:** No new content yet; builders can grow the world without fragile manual wiring.
+
+Work:
+
+- Generalize `WorldAutoIds` into a small world registry that discovers tagged instances across configured roots.
+- Define a typed prefab descriptor: tag, ID attribute, required children, optional children, validator, and binder.
+- Preserve valid IDs, repair duplicate/missing IDs deterministically, and never use display names as identity.
+- Support add/remove at runtime through `CollectionService` signals where appropriate.
+- Add warn-once diagnostics with the exact model path and missing requirement.
+- Add a Studio command/plugin script that can scan, tag, stamp IDs, and print a validation report before publish.
+- Migrate lockers first without changing behavior.
+- Migrate arcade cabinets second so duplicated cabinets independently queue, play, and report state.
+- Migrate garage rooms/stations third; resolve station/audio metadata from attributes or catalog keys rather than fixed names.
+- Document prefab contracts in one builder guide with duplication recipes.
+
+Exit gate:
+
+- Duplicating a locker requires no rename or code edit.
+- Duplicating an arcade cabinet creates an independent valid cabinet.
+- Duplicating a garage station or room either binds correctly or produces one actionable warning.
+- A malformed copy cannot break unrelated UI or services.
+- Runtime and Studio validation agree on prefab validity.
+
+## Milestone 2 - V0 Loop Product Pass
+
+**Status:** Planned
+
+**Player outcome:** A new player understands why the locker hallway and arcade matter and reaches one satisfying social payoff.
+
+Work:
+
+- Observe first-time players and simplify the first-day guidance around real confusion points.
+- Polish transfer/name flow, locker recognition, note readability, and hand-off feedback.
+- Decide the smallest honest memory reward that closes the loop: likely one locker sticker or photo strip earned through an activity.
+- Improve arcade spectator readability and recovery when players leave mid-queue or mid-match.
+- Improve garage Practice framing and occupancy feedback without adding band progression.
+- Add minimal funnel analytics: setup complete, locker opened, note sent, hand-off accepted, arcade joined/completed, garage joined/completed.
+- Replace or remove content that cannot ship legally, including commercial song prototypes.
+
+Exit gate:
+
+- Most observed new players can reach locker interaction without developer explanation.
+- Two players can complete note, snack, and one after-school activity without stuck state.
+- The loop ends with a visible identity/memory callback.
+- Analytics events are privacy-conscious, documented, and do not drive manipulative design.
+
+## Milestone 3 - Compact Town Blockout
+
+**Status:** Planned after V0 loop validation
+
+**Player outcome:** Players can freely walk a small, memorable route from school to after-school destinations.
+
+Work:
+
+- Block out the school, shopping street, arcade, garage, bus stop, river path, and shrine as landmarks only.
+- Build one continuous school -> shopping street -> arcade/garage route first.
+- Establish terrain, sightlines, signage, collision, spawn points, and traversal timing before final art.
+- Add a location registry and ambient zones so each district can own soundscape, lighting hints, guidance labels, and analytics without bespoke scripts.
+- Use soft boundaries, terrain, fences, rail lines, and distant scenery to make a compact map feel larger.
+- Keep doors open only when interiors earn their cost; most buildings remain readable facades initially.
+- Test player density at target server sizes. Shorten routes or add gathering cues if players rarely meet.
+- Establish streaming and instance budgets before adding decorative density.
+
+Exit gate:
+
+- Active-core travel time feels pleasant rather than empty.
+- Players can navigate using landmarks without a permanent minimap.
+- School, arcade, and garage remain populated enough for their social loops.
+- Streaming, prompts, ambient zones, and world registry work after moving between districts.
+
+## Milestone 4 - Soft Town Rhythm
+
+**Status:** Future direction
+
+**Player outcome:** The town changes mood and opportunity without forcing a schedule.
+
+Work:
+
+- Introduce authoritative but low-frequency world state: time band, weather, season, and a small event flag set.
+- Begin with three readable time bands: morning arrival, school day, after school/evening.
+- Use weather and time to alter lighting, ambience, NPC/scenery dressing, board text, and gathering suggestions.
+- Keep core social locations accessible. Events should attract players, not punish late arrivals.
+- Add a school/town notice channel consumed by diegetic boards and phone messages.
+- Add graceful late-join state synchronization and deterministic cleanup between world states.
+
+Exit gate:
+
+- A player can join at any point and understand the current mood.
+- World-state changes do not interrupt an active rhythm match, hand-off, or customization flow.
+- At least one weather/time variation changes the route or gathering behavior meaningfully.
+
+## Milestone 5 - One Town Ritual
+
+**Status:** Future direction; choose from playtest evidence
+
+**Player outcome:** The open town offers one repeatable shared ritual beyond arcade and garage.
+
+Candidate slices:
+
+- Conbini snack stop feeding the existing hand-off system.
+- Vending-machine daily selection with no complex economy.
+- River photo spot producing a locker photo strip.
+- Shrine seasonal wish using templates and a keepsake.
+- Rainy bus-stop gathering with umbrellas and conversation prompts.
+
+Selection rule:
+
+- Choose the ritual that strengthens the weakest proven part of the current loop.
+- Reuse world registry, hand-off, item catalog, world state, and diegetic surfaces.
+- Build one location and one outcome, not a generalized shop/economy simulation.
+
+Exit gate:
+
+- The ritual creates visible player convergence.
+- Its reward or memory feeds identity rather than raw currency accumulation.
+- The prefab and catalog patterns make a second content variant cheap to author.
+
+## Milestone 6 - Identity And Memory Layer
+
+**Status:** Future direction
+
+**Player outcome:** Ordinary days leave chosen, visible traces on the student.
+
+Possible work:
+
+- Backpack and keychain personalization using desk/bag hooks.
+- Photo strips, stickers, notes, event stamps, and demo tapes as scrapbook/locker memories.
+- Small uniform and after-school outfit choices using curated selection, not random rerolls.
+- Item provenance metadata: where and when a memory came from.
+- Capacity and presentation rules that keep lockers readable instead of becoming inventory grids.
+
+Do not begin until the game has enough meaningful sources of memories to justify a collection layer.
+
+## Milestone 7 - Content Expansion
+
+**Status:** Future direction
+
+Expand only through proven reusable foundations and one complete slice at a time.
+
+Possible destinations:
+
+- Conbini or school store.
+- Riverbank and shrine seasonal route.
+- Festival evening.
+- Cleaning ritual or one lightweight school activity.
+- Additional original arcade songs and cabinet rulesets.
+- Original garage song with licensed stems and authored charts.
+- Photo booth or purikura-inspired social photo activity.
+
+Still deferred:
+
+- Full class schedule simulation.
+- Many functional classrooms.
+- Dorms or private housing.
+- Complex NPC relationship trees.
+- Deep jobs/economy.
+- Clubs as large progression systems.
+- City-scale transport.
+
+## Release Content And Rights Gate
+
+Before public release:
+
+- Replace commercial prototype music with original, commissioned, or properly licensed audio.
+- Track source, license, creator credit, asset ID, stems, BPM/tempo map, and chart ownership in a content manifest.
+- Review Japanese language, signage, uniforms, school details, and town references for authenticity and accidental misuse.
+- Replace placeholder art where readability, identity, or rights require final assets.
+- Confirm moderation, reporting, filtering, privacy, and data-retention behavior for every social surface.
+
+## Roadmap Decision Rules
+
+Before starting a slice, answer:
+
+1. What player behavior or feeling is this testing?
+2. Which existing foundation does it reuse?
+3. What is the smallest complete version?
+4. How will builders add a second copy or content variant?
+5. What server authority, moderation, persistence, and cleanup rules apply?
+6. What must be tested in one-player and two-player Studio?
+7. Does it increase player convergence or spread the server thinner?
+8. Does it leave a memory, relationship, or reason to return?
+
+If those answers are unclear, the slice is not ready to implement.
+
+## Standard Slice Checklist
+
+Every implementation plan must include:
+
+- Explicit in-scope and out-of-scope boundaries.
+- Existing contracts that must remain unchanged.
+- Builder/prefab setup requirements.
+- Graceful behavior for missing or malformed world objects.
+- Server-authority, distance, cooldown, occupancy, and cleanup rules where relevant.
+- Automated commands: `stylua src`, `selene src`, and a named `rojo build` output.
+- A Studio checklist covering baseline regressions and the new feature.
+- A two-player checklist when shared state or social interaction is involved.
+- Required asset list. If tooling cannot make an asset, the implementer must tell the user exactly what is needed.
+- Honest status and documentation updates after verification.
+
+## Immediate Recommendation
+
+The next implementation slice should be **Milestone 1A: World Registry + Locker Migration**, not another town location.
+
+Keep it narrow:
+
+- Define the registry/descriptor contract.
+- Move existing locker discovery and ID repair onto it.
+- Add validation diagnostics and a small Studio scan/stamp command.
+- Prove duplicate, delete, malformed-copy, and saved-ID fallback behavior.
+- Do not migrate arcade and garage in the same slice.
+
+Once lockers prove the abstraction, migrate arcade cabinets in a separate slice. That migration is the real test that the foundation supports multiple independent activity instances rather than only numbered storage props.

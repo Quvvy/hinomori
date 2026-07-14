@@ -14,7 +14,7 @@ alwaysApply: true
 - Server modules sync to `ServerScriptService.Services`; client/shared sync to `ReplicatedStorage.Shared.Services`.
 - Startup scripts: `src/startup/Server.server.luau`, `src/startup/Client.client.luau`.
 - Shared utilities: `src/modules/` (Core, Game, Math, Platform).
-- UI: `src/ui/` — modular initializer pattern; no monolithic UIController.
+- UI: `src/ui/` - `init.luau` mounts the persistent HUD; client services mount feature menus. No monolithic UIController.
 - Player data: `src/shared/Data.luau` via DataServiceTyped; mutate only through DataService on server.
 - Networking: Networker only; whitelist client-callable methods explicitly on each service server.
 - Never trust client for locker state, notes, hand-offs, arcade scores, or inventory.
@@ -22,3 +22,6 @@ alwaysApply: true
 - Do not invent Roblox APIs.
 - Map geometry stays in Studio; do not put world building logic in repo scripts unless requested.
 - Tag new systems with implementation status from AGENTS.md (Implemented / Prototype / Planned).
+- Read `AGENTS.md` and `docs/CURRENT_STATE.md` before editing. The repository is self-contained; do not require the owner's private llm-wiki.
+- Use the shared Team Create place as world truth. The tracked `rural.rbxl` is a legacy snapshot.
+- Missing world objects must fail locally with a warning, not break UI/service startup.

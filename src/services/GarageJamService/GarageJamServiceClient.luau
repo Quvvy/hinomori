@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GarageJamConfig = require(ReplicatedStorage.Shared.Modules.Game.GarageJamConfig)
+local GarageSkillCatalog = require(ReplicatedStorage.Shared.Modules.Game.GarageSkillCatalog)
 local Logger = require(ReplicatedStorage.Shared.Modules.Core.Logger)
 local Networker = require(ReplicatedStorage.Packages.Networker)
 
@@ -22,11 +23,16 @@ export type GarageJamServiceClient = typeof(setmetatable(
 	{} :: {
 		_networker: Networker.Client?,
 		_menuModule: any?,
+		_skillMenuModule: any?,
+		_rhythmModule: any?,
 		_boundPrompts: { [ProximityPrompt]: boolean },
 		_stationPrompts: { [string]: ProximityPrompt },
 		_playingStations: { [string]: Sound },
+		_skillDuckedVolumes: { [Sound]: number },
 		_warnedMissing: { [string]: boolean },
 		_currentState: GarageState?,
+		_activeSkillStationId: string?,
+		_missAudioCleanup: (() -> ())?,
 		_syncLoopRunning: boolean,
 		_retryBindingStarted: boolean,
 		_garageChildWatcherBound: boolean,
@@ -48,8 +54,11 @@ function GarageJamServiceClient.Init(self: GarageJamServiceClient)
 	self._boundPrompts = {}
 	self._stationPrompts = {}
 	self._playingStations = {}
+	self._skillDuckedVolumes = {}
 	self._warnedMissing = {}
 	self._currentState = nil
+	self._activeSkillStationId = nil
+	self._missAudioCleanup = nil
 	self._syncLoopRunning = false
 	self._retryBindingStarted = false
 	self._garageChildWatcherBound = false
@@ -60,13 +69,26 @@ function GarageJamServiceClient.Start(self: GarageJamServiceClient)
 
 	local ui = ReplicatedStorage:WaitForChild("UI")
 	self._menuModule = require(ui.Menus.GarageBoardMenu)
+	self._skillMenuModule = require(ui.Menus.GarageSkillMenu)
+	self._rhythmModule = require(ui.Menus.RhythmGame)
 	self._menuModule.mount({
 		enterPractice = function()
 			return self:EnterPractice()
 		end,
 	})
+	self._skillMenuModule.mount({
+		playPart = function()
+			self:StartSkillRun()
+		end,
+		leave = function()
+			self:LeaveStation()
+		end,
+	})
 
 	self:_bindWhenGarageExists()
+	Players.LocalPlayer.CharacterAdded:Connect(function()
+		self:_stopSkillRun(false)
+	end)
 	self:FetchState()
 end
 
@@ -113,13 +135,88 @@ function GarageJamServiceClient.LeaveStation(self: GarageJamServiceClient): bool
 		return false
 	end
 
+	self:_stopSkillRun(false)
 	return self._networker:fetch("leaveStation") == true
 end
 
 function GarageJamServiceClient.garageStateUpdated(self: GarageJamServiceClient, state: GarageState)
 	self._currentState = state
+	if self._activeSkillStationId and state.activeStationId ~= self._activeSkillStationId then
+		self:_stopSkillRun(false)
+	end
 	self:_updatePrompts()
 	self:_updateStemPlayback()
+	self:_updateSkillMenu()
+end
+
+function GarageJamServiceClient.StartSkillRun(self: GarageJamServiceClient): boolean
+	local state = self._currentState
+	local stationId = state and state.activeStationId
+	if not stationId then
+		self:_showToast("Join an instrument first.")
+		return false
+	end
+
+	local station = GarageJamConfig.getStation(stationId)
+	local chart = GarageSkillCatalog.getForStation(stationId)
+	if not station or not chart then
+		self:_showToast("No practice part yet.")
+		return false
+	end
+
+	if chart.soundKey ~= stationId then
+		self:_warnOnce(chart.id .. ":soundKey", `Garage chart {chart.id} soundKey does not match {stationId}.`)
+		self:_showToast("Practice part is miswired.")
+		return false
+	end
+
+	local sourceSound = GarageJamConfig.getSoundForKey(chart.soundKey)
+	if not sourceSound then
+		self:_warnOnce(chart.soundKey .. ":skillSound", `Missing garage skill Sound for {chart.soundKey}.`)
+		self:_showToast("Practice audio is missing.")
+		return false
+	end
+
+	if self._activeSkillStationId then
+		self:_stopSkillRun(false)
+	end
+
+	self._activeSkillStationId = stationId
+	self:_updateSkillMenu()
+
+	local song = table.clone(chart) :: any
+	song.workspaceSoundName = sourceSound.Name
+	song.soundId = sourceSound.SoundId
+
+	if not self._rhythmModule then
+		self:_showToast("Practice runner is unavailable.")
+		self:_stopSkillRun()
+		return false
+	end
+
+	self._rhythmModule.start(
+		{
+			matchId = `garage_{stationId}`,
+			mode = station.displayName,
+		},
+		song,
+		function(result: { [string]: any })
+			self:_finishSkillRun(chart, result)
+		end,
+		{
+			missAudioFeedback = self:_makeMissAudioFeedback(),
+			onStop = function()
+				if self._activeSkillStationId == stationId then
+					self._activeSkillStationId = nil
+					self:_cleanupSkillAudio()
+					self:_updateSkillMenu()
+				end
+			end,
+		}
+	)
+	self:_applySkillDucking(stationId)
+
+	return true
 end
 
 function GarageJamServiceClient._bindWhenGarageExists(self: GarageJamServiceClient)
@@ -311,7 +408,162 @@ function GarageJamServiceClient._updateStemPlayback(self: GarageJamServiceClient
 		end
 	end
 
+	if self._activeSkillStationId then
+		self:_applySkillDucking(self._activeSkillStationId)
+	end
 	self:_startSyncLoopIfNeeded()
+end
+
+function GarageJamServiceClient._updateSkillMenu(self: GarageJamServiceClient)
+	if not self._skillMenuModule then
+		return
+	end
+
+	local state = self._currentState
+	local activeStationId = state and state.activeStationId
+	if not activeStationId then
+		self._skillMenuModule.close()
+		return
+	end
+
+	local station = GarageJamConfig.getStation(activeStationId)
+	if not station then
+		self._skillMenuModule.close()
+		return
+	end
+
+	local chart = GarageSkillCatalog.getForStation(activeStationId)
+	local summary = if chart then GarageSkillCatalog.getSummary(chart.id) else nil
+	self._skillMenuModule.update(
+		activeStationId,
+		station.displayName,
+		summary,
+		self._activeSkillStationId == activeStationId
+	)
+end
+
+function GarageJamServiceClient._finishSkillRun(self: GarageJamServiceClient, chart: any, result: { [string]: any })
+	if self._activeSkillStationId ~= chart.stationId then
+		return
+	end
+
+	self._activeSkillStationId = nil
+	self:_cleanupSkillAudio()
+	self:_updateSkillMenu()
+
+	local accuracy = math.floor((tonumber(result.accuracy) or 0) * 1000) / 10
+	self:_showToast(`{chart.resultText} {accuracy}%`)
+end
+
+function GarageJamServiceClient._stopSkillRun(self: GarageJamServiceClient, updateMenu: boolean?)
+	if not self._activeSkillStationId then
+		self:_cleanupSkillAudio()
+		if updateMenu ~= false then
+			self:_updateSkillMenu()
+		end
+		return
+	end
+
+	self._activeSkillStationId = nil
+	if self._rhythmModule then
+		self._rhythmModule.stop()
+	end
+	self:_cleanupSkillAudio()
+	if updateMenu ~= false then
+		self:_updateSkillMenu()
+	end
+end
+
+function GarageJamServiceClient._applySkillDucking(self: GarageJamServiceClient, activeStationId: string)
+	for _, station in GarageJamConfig.STATIONS do
+		local sound = self._playingStations[station.id]
+		if sound then
+			if self._skillDuckedVolumes[sound] == nil then
+				self._skillDuckedVolumes[sound] = sound.Volume
+			end
+
+			local originalVolume = self._skillDuckedVolumes[sound]
+			sound.Volume = if station.id == activeStationId then 0 else math.max(originalVolume * 0.35, 0.08)
+		end
+	end
+end
+
+function GarageJamServiceClient._cleanupSkillAudio(self: GarageJamServiceClient)
+	for sound, volume in self._skillDuckedVolumes do
+		if sound.Parent then
+			sound.Volume = volume
+		end
+	end
+	table.clear(self._skillDuckedVolumes)
+
+	local missAudioCleanup = self._missAudioCleanup
+	self._missAudioCleanup = nil
+	if missAudioCleanup then
+		missAudioCleanup()
+	end
+end
+
+function GarageJamServiceClient._makeMissAudioFeedback(self: GarageJamServiceClient): { [string]: (Sound) -> () }
+	local originalVolume: number? = nil
+	local activeSound: Sound? = nil
+	local restoreToken = 0
+	local cleanedUp = false
+
+	local function restore(sound: Sound?)
+		if cleanedUp and not sound then
+			return
+		end
+
+		local targetSound = sound or activeSound
+		if targetSound and originalVolume ~= nil and targetSound.Parent then
+			targetSound.Volume = originalVolume
+		end
+	end
+
+	local function cleanup()
+		if cleanedUp then
+			return
+		end
+
+		cleanedUp = true
+		restore(activeSound)
+	end
+
+	self._missAudioCleanup = cleanup
+
+	return {
+		onMiss = function(sound: Sound)
+			if cleanedUp then
+				return
+			end
+
+			activeSound = sound
+			if originalVolume == nil then
+				originalVolume = sound.Volume
+			end
+
+			restoreToken += 1
+			local token = restoreToken
+			sound.Volume = math.max((originalVolume :: number) * 0.18, 0.05)
+			task.delay(0.45, function()
+				if not cleanedUp and token == restoreToken then
+					restore(sound)
+				end
+			end)
+		end,
+		onRecover = function(sound: Sound)
+			if cleanedUp then
+				return
+			end
+
+			restoreToken += 1
+			restore(sound)
+		end,
+		onCleanup = function(sound: Sound)
+			activeSound = sound
+			cleanup()
+		end,
+	}
 end
 
 function GarageJamServiceClient._playStation(self: GarageJamServiceClient, station: GarageJamConfig.GarageStationConfig)

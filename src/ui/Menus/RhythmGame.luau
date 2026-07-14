@@ -21,6 +21,17 @@ type RhythmSong = {
 	mapText: string,
 }
 
+type MissAudioFeedback = {
+	onMiss: ((Sound) -> ())?,
+	onRecover: ((Sound) -> ())?,
+	onCleanup: ((Sound) -> ())?,
+}
+
+type RhythmGameOptions = {
+	missAudioFeedback: MissAudioFeedback?,
+	onStop: (() -> ())?,
+}
+
 type FinishResult = {
 	score: number,
 	maxCombo: number,
@@ -41,6 +52,7 @@ type ActiveSession = {
 	gui: ScreenGui,
 	sound: Sound,
 	startClock: number,
+	audioStartMs: number,
 	parsedMap: RhythmMapParser.ParsedMap,
 	notes: { RuntimeNote },
 	laneFrames: { Frame },
@@ -54,7 +66,9 @@ type ActiveSession = {
 	judgments: RhythmScoring.JudgmentCounts,
 	renderConnection: RBXScriptConnection?,
 	finished: boolean,
+	cleanedUp: boolean,
 	onFinish: (FinishResult) -> (),
+	options: RhythmGameOptions?,
 }
 
 local RhythmGame = {}
@@ -194,10 +208,48 @@ end
 
 local function chartTimeMs(session: ActiveSession): number
 	if session.sound.IsPlaying then
-		return session.sound.TimePosition * 1000
+		return math.max(0, (session.sound.TimePosition * 1000) - session.audioStartMs)
 	end
 
 	return (os.clock() - session.startClock) * 1000
+end
+
+local function safeCall(callback: (...any) -> (), ...: any)
+	local ok, err = pcall(callback, ...)
+	if not ok then
+		warn(`[Hinomori] RhythmGame callback failed: {err}`)
+	end
+end
+
+local function recoverMissAudio(session: ActiveSession)
+	local feedback = session.options and session.options.missAudioFeedback
+	if feedback and feedback.onRecover then
+		safeCall(feedback.onRecover, session.sound)
+	end
+end
+
+local function triggerMissAudio(session: ActiveSession)
+	local feedback = session.options and session.options.missAudioFeedback
+	if feedback and feedback.onMiss then
+		safeCall(feedback.onMiss, session.sound)
+	end
+end
+
+local function cleanupSession(session: ActiveSession)
+	if session.cleanedUp then
+		return
+	end
+
+	session.cleanedUp = true
+
+	local feedback = session.options and session.options.missAudioFeedback
+	if feedback and feedback.onCleanup then
+		safeCall(feedback.onCleanup, session.sound)
+	end
+
+	if session.options and session.options.onStop then
+		safeCall(session.options.onStop)
+	end
 end
 
 local function finishSession(session: ActiveSession)
@@ -216,6 +268,7 @@ local function finishSession(session: ActiveSession)
 		accuracy = accuracy,
 		judgments = session.judgments,
 	})
+	cleanupSession(session)
 
 	task.delay(1.25, function()
 		if activeSession == session then
@@ -243,9 +296,11 @@ local function markMiss(session: ActiveSession, note: RuntimeNote)
 	destroyNoteGui(note)
 	setJudgmentText(session, "Miss", UiStyle.Colors.Danger)
 	updateStats(session)
+	triggerMissAudio(session)
 end
 
 local function addJudgment(session: ActiveSession, judgmentName: string, scoreValue: number)
+	recoverMissAudio(session)
 	session.score += scoreValue
 	session.combo += 1
 	session.maxCombo = math.max(session.maxCombo, session.combo)
@@ -557,14 +612,23 @@ local function makeSessionGui(
 	return gui, laneFrames, keyLabels, statsLabel, judgmentLabel, speedLabel
 end
 
-function RhythmGame.start(match: { [string]: any }, song: RhythmSong, onFinish: (FinishResult) -> ())
+function RhythmGame.start(
+	match: { [string]: any },
+	song: RhythmSong,
+	onFinish: (FinishResult) -> (),
+	options: RhythmGameOptions?
+)
 	RhythmGame.stop()
 
 	local parsedMap = RhythmMapParser.parse(song.mapText)
+	local audioStartMs = tonumber(parsedMap.metadata.audiostartms) or 0
 	local gui, laneFrames, keyLabels, statsLabel, judgmentLabel, speedLabel = makeSessionGui(song, parsedMap)
 	local sound = cloneWorkspaceSound(song)
 	sound.Name = "RhythmPlayback"
 	sound.Parent = gui
+	if audioStartMs > 0 then
+		sound.TimePosition = audioStartMs / 1000
+	end
 
 	local notes = {}
 	for _, note in parsedMap.notes do
@@ -585,6 +649,7 @@ function RhythmGame.start(match: { [string]: any }, song: RhythmSong, onFinish: 
 		gui = gui,
 		sound = sound,
 		startClock = os.clock(),
+		audioStartMs = audioStartMs,
 		parsedMap = parsedMap,
 		notes = notes,
 		laneFrames = laneFrames,
@@ -598,7 +663,9 @@ function RhythmGame.start(match: { [string]: any }, song: RhythmSong, onFinish: 
 		judgments = RhythmScoring.emptyJudgments(),
 		renderConnection = nil,
 		finished = false,
+		cleanedUp = false,
 		onFinish = onFinish,
+		options = options,
 	}
 
 	activeSession = session
@@ -624,6 +691,8 @@ function RhythmGame.stop()
 	if session.renderConnection then
 		session.renderConnection:Disconnect()
 	end
+
+	cleanupSession(session)
 
 	if session.sound.Parent then
 		session.sound:Stop()

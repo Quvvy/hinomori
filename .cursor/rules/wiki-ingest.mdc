@@ -1,33 +1,24 @@
 ---
-description: LLM Wiki ingest — when user asks to ingest, query, or lint the design wiki
+description: Optional owner-only llm-wiki synchronization
 alwaysApply: false
 ---
 
-# Design wiki (llm-wiki)
+# Optional Design Wiki
 
-Wiki vault: `C:\Users\elifs\Projects\llm-wiki`
+The Hinomori repository is the collaborator-facing source of truth. A coding agent must be able to work from `AGENTS.md` and `docs/` without any external vault.
 
-When the user asks to **ingest**, **query**, or **lint** the wiki:
+The owner may have a private llm-wiki at `C:\Users\elifs\Projects\llm-wiki`. Use it only when the owner explicitly asks to ingest, query, lint, or synchronize that wiki and the path exists in the current environment.
 
-1. Read `C:\Users\elifs\Projects\llm-wiki\AGENTS.md` and follow it exactly.
-2. Raw sources for this game live in `C:\Users\elifs\Projects\llm-wiki\raw\hinomori\`.
-3. Never modify `raw/` — only write to `wiki/` and `outputs/`.
-4. Tag Hinomori pages with `hinomori` in frontmatter.
-5. Use `[[wikilinks]]` for internal references (Obsidian graph view).
+If the path is unavailable:
 
-## Sync sources from this repo
+- do not block normal project work
+- do not ask a collaborator to recreate the owner's local path
+- use repository canonical documents
+- report that optional wiki synchronization could not run
 
-Before ingest, copy updated docs when the user asks to sync:
+When the owner explicitly requests wiki work and the vault exists:
 
-| Game repo | Wiki raw |
-|-----------|----------|
-| `docs/GDD.md` | `raw/hinomori/GDD.md` |
-| `docs/ROADMAP.md` | `raw/hinomori/ROADMAP.md` |
-| `README.md` | `raw/hinomori/README.md` |
-| `AGENTS.md` | `raw/hinomori/AGENTS.md` |
-
-## Ingest operations
-
-- **Ingest** — read raw source → `wiki/sources/` + entities/concepts → update index + log.
-- **Query** — read `wiki/index.md` first, synthesize with citations.
-- **Lint** — health check → `outputs/lint-YYYY-MM-DD.md` + log entry.
+1. Read the vault's own `AGENTS.md` first.
+2. Follow the vault's ingest and raw-source rules exactly.
+3. Treat repository docs as the current implementation/design input.
+4. Do not let an older wiki page silently override `docs/CURRENT_STATE.md`, `docs/GDD.md`, or `docs/ROADMAP.md`.

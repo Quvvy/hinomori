@@ -29,6 +29,10 @@ Reference mockups and games such as Gakuran are inspiration for restraint, spars
 - No friend free-text, offline notes, or new social persistence.
 - Do not use mockup images as production assets.
 
-## Current Slice
+## Current Implementation
 
-Slice 5 creates the shared UI primitives and converts the V0 surfaces: HUD/session, transfer form, locker, snack hand-off phone, arcade cabinet menu, match result slip, and light rhythm gameplay styling. It should not change server authority, persistence, rewards, or gameplay flow.
+The shared primitives and V0 surfaces are implemented as a prototype: HUD/session, transfer card, locker menu, snack hand-off phone, first-day guide, arcade cabinet/menu/result, rehearsal board, garage skill slip, and rhythm overlay.
+
+New UI should reuse `UiStyle.paperSurface`, `phoneSurface`, `worldSurface`, `tinyHudLabel`, `iconButton`, `toastSlip`, and `listRow` where they fit. Compatibility wrappers (`panel`, `button`, `label`, `toast`) remain for existing callers.
+
+Client services own feature-menu mounting; `src/ui/init.luau` owns the persistent HUD root. UI work must not change server authority, persistence, rewards, or gameplay contracts unless the approved slice explicitly includes those changes.
